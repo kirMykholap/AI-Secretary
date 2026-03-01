@@ -1,0 +1,60 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/ai_task_secretary/nodejs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Main tasks table - single source of truth
+model tasks {
+  id           String   @id @default(uuid())
+  
+  // Source information
+  source       String   @db.VarChar(50) // jira, ticktick, telegram, notion, etc.
+  source_id    String?  @db.VarChar(255) // ID from source system
+  
+  // Task details
+  title        String   @db.VarChar(500)
+  description  String?  @db.Text
+  priority     Int      @default(1) // 0=low, 1=medium, 3=high, 5=urgent
+  due_date     DateTime?
+  tags         String[] // Array of tags like ["jira", "urgent"]
+  
+  // Time tracking and planning
+  estimated_minutes Int?     // AI-estimated time to complete (minutes)
+  actual_minutes    Int?     // Actual time spent (minutes, for analytics)
+  postponed_count   Int      @default(0) // Number of times task was postponed
+  parent_id         String?  // Parent task ID for subtasks
+  
+  // Status
+  status       String   @default("active") @db.VarChar(50) // active, completed, deleted
+  
+  // External IDs for sync
+  jira_id      String?  @unique @db.VarChar(255)
+  jira_key     String?  @db.VarChar(255)
+  ticktick_id  String?  @unique @db.VarChar(255)
+  
+  // Timestamps
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  completed_at DateTime?
+  
+  @@index([source])
+  @@index([status])
+  @@index([jira_id])
+  @@index([ticktick_id])
+}
+
+// Keep old table for migration reference (will delete after migration)
+model task_mappings {
+  id          Int      @id @default(autoincrement())
+  jira_id     String   @unique @db.VarChar(255)
+  jira_key    String   @db.VarChar(255)
+  ticktick_id String   @unique @db.VarChar(255)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
