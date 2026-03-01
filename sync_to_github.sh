@@ -4,8 +4,8 @@
 
 cd /home/ubuntu/ai_task_secretary
 
-# Check if there are changes
-CHANGES=$(git status --porcelain)
+# Check if there are changes (excluding platform files)
+CHANGES=$(git status --porcelain | grep -v ".abacus.donotdelete" | grep -v "^?? nodejs_space/.env")
 
 if [ -z "$CHANGES" ]; then
   echo "✓ No changes to push"
@@ -14,11 +14,14 @@ fi
 
 # Show what will be committed
 echo "📝 Changes to commit:"
-git status --short
+git status --short | grep -v ".abacus.donotdelete" | grep -v "^?? nodejs_space/.env"
 echo ""
 
-# Add only tracked files and new files (respects .gitignore)
-git add .
+# Add all tracked changes
+git add -A
+
+# Reset files that should never be committed
+git reset nodejs_space/.env 2>/dev/null || true
 
 # Commit with message
 COMMIT_MSG="${1:-Auto-sync: $(date '+%Y-%m-%d %H:%M:%S')}"
