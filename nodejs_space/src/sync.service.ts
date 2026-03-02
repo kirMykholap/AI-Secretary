@@ -26,13 +26,13 @@ export class SyncService {
    */
   private mapPriority(jiraPriority?: string): number {
     if (!jiraPriority) return 1;
-    
+
     const priorityMap: { [key: string]: number } = {
-      'Highest': 5,
-      'High': 3,
-      'Medium': 1,
-      'Low': 0,
-      'Lowest': 0,
+      Highest: 5,
+      High: 3,
+      Medium: 1,
+      Low: 0,
+      Lowest: 0,
     };
 
     return priorityMap[jiraPriority] ?? 1;
@@ -43,15 +43,15 @@ export class SyncService {
    */
   private extractDescription(description: any): string {
     if (!description) return '';
-    
+
     // If it's already a string, return it
     if (typeof description === 'string') return description;
-    
+
     // If it's Atlassian Document Format (ADF), extract text
     if (typeof description === 'object' && description.content) {
       return this.extractTextFromADF(description);
     }
-    
+
     return '';
   }
 
@@ -60,25 +60,25 @@ export class SyncService {
    */
   private extractTextFromADF(adf: any): string {
     if (!adf || !adf.content) return '';
-    
+
     let text = '';
-    
+
     const extractFromNode = (node: any): string => {
       if (!node) return '';
-      
+
       // If it's a text node, return the text
       if (node.type === 'text' && node.text) {
         return node.text;
       }
-      
+
       // If it has content, recursively extract
       if (node.content && Array.isArray(node.content)) {
         return node.content.map(extractFromNode).join(' ');
       }
-      
+
       return '';
     };
-    
+
     text = adf.content.map(extractFromNode).join('\n');
     return text.trim();
   }
@@ -110,7 +110,7 @@ export class SyncService {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
-    
+
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+0200`;
   }
 
@@ -120,10 +120,10 @@ export class SyncService {
   async syncSingleJiraTask(jiraIssueId: string): Promise<void> {
     try {
       this.logger.log(`Syncing single Jira task: ${jiraIssueId}`);
-      
+
       // Get Jira task details
       const jiraTask = await this.jiraService.getTaskById(jiraIssueId);
-      
+
       if (!jiraTask) {
         this.logger.error(`Jira task not found: ${jiraIssueId}`);
         return;
@@ -140,7 +140,7 @@ export class SyncService {
       if (existingTask) {
         // Update existing task in database
         this.logger.log(`Updating existing task in DB: ${existingTask.id}`);
-        
+
         const updatedTask = await this.taskService.updateTask(existingTask.id, {
           title,
           description,
@@ -158,7 +158,9 @@ export class SyncService {
             dueDate: this.formatTickTickDate(dueDate),
             tags: ['jira'],
           });
-          this.logger.log(`Updated task in TickTick: ${updatedTask.ticktick_id}`);
+          this.logger.log(
+            `Updated task in TickTick: ${updatedTask.ticktick_id}`,
+          );
         } else {
           // Create in TickTick if doesn't exist
           const ticktickTask = await this.tickTickService.createTask({
@@ -168,18 +170,18 @@ export class SyncService {
             dueDate: this.formatTickTickDate(dueDate),
             tags: ['jira'],
           });
-          
+
           // Update task with TickTick ID
           await this.taskService.updateTask(updatedTask.id, {
             ticktick_id: ticktickTask.id,
           });
-          
+
           this.logger.log(`Created task in TickTick: ${ticktickTask.id}`);
         }
       } else {
         // Create new task in database
         this.logger.log(`Creating new task in DB for Jira: ${jiraTask.key}`);
-        
+
         const newTask = await this.taskService.createTask({
           source: 'jira',
           source_id: jiraTask.id,
@@ -195,11 +197,20 @@ export class SyncService {
         // Estimate time using LLM if not set
         let estimatedMinutes = 0;
         try {
-          estimatedMinutes = await this.llmService.estimateTaskTime(title, description);
-          await this.taskService.updateTask(newTask.id, { estimated_minutes: estimatedMinutes });
-          this.logger.log(`Estimated ${estimatedMinutes} minutes for task ${jiraTask.key}`);
+          estimatedMinutes = await this.llmService.estimateTaskTime(
+            title,
+            description,
+          );
+          await this.taskService.updateTask(newTask.id, {
+            estimated_minutes: estimatedMinutes,
+          });
+          this.logger.log(
+            `Estimated ${estimatedMinutes} minutes for task ${jiraTask.key}`,
+          );
         } catch (error) {
-          this.logger.warn(`Failed to estimate time for task ${jiraTask.key}: ${error.message}`);
+          this.logger.warn(
+            `Failed to estimate time for task ${jiraTask.key}: ${error.message}`,
+          );
         }
 
         // Create in TickTick
@@ -216,8 +227,10 @@ export class SyncService {
           ticktick_id: ticktickTask.id,
         });
 
-        this.logger.log(`Created new task: DB=${newTask.id}, TickTick=${ticktickTask.id}`);
-        
+        this.logger.log(
+          `Created new task: DB=${newTask.id}, TickTick=${ticktickTask.id}`,
+        );
+
         // Send Telegram notification about new task
         try {
           await this.telegramService.sendNewTaskNotification(
@@ -227,7 +240,9 @@ export class SyncService {
             estimatedMinutes,
           );
         } catch (error) {
-          this.logger.warn(`Failed to send Telegram notification for ${jiraTask.key}: ${error.message}`);
+          this.logger.warn(
+            `Failed to send Telegram notification for ${jiraTask.key}: ${error.message}`,
+          );
         }
       }
     } catch (error) {
@@ -239,12 +254,16 @@ export class SyncService {
   /**
    * Sync all Jira tasks assigned to user
    */
-  async syncAllJiraTasks(): Promise<{ created: number; updated: number; errors: number }> {
+  async syncAllJiraTasks(): Promise<{
+    created: number;
+    updated: number;
+    errors: number;
+  }> {
     const stats = { created: 0, updated: 0, errors: 0 };
 
     try {
       this.logger.log('Starting full Jira sync...');
-      
+
       // Get all Jira tasks
       const jiraTasks = await this.jiraService.getAssignedTasks();
       this.logger.log(`Found ${jiraTasks.length} Jira tasks`);
@@ -252,22 +271,29 @@ export class SyncService {
       for (const jiraTask of jiraTasks) {
         try {
           // Check if task exists in DB
-          const existingTask = await this.taskService.getTaskByJiraId(jiraTask.id);
+          const existingTask = await this.taskService.getTaskByJiraId(
+            jiraTask.id,
+          );
 
           const priority = this.mapPriority(jiraTask.fields.priority?.name);
           const dueDate = this.getDueDate(jiraTask.fields.duedate);
           const title = `[${jiraTask.key}] ${jiraTask.fields.summary}`;
-          const description = this.extractDescription(jiraTask.fields.description);
+          const description = this.extractDescription(
+            jiraTask.fields.description,
+          );
 
           if (existingTask) {
             // Update existing task
-            const updatedTask = await this.taskService.updateTask(existingTask.id, {
-              title,
-              description,
-              priority,
-              due_date: dueDate,
-              jira_key: jiraTask.key,
-            });
+            const updatedTask = await this.taskService.updateTask(
+              existingTask.id,
+              {
+                title,
+                description,
+                priority,
+                due_date: dueDate,
+                jira_key: jiraTask.key,
+              },
+            );
 
             // Sync to TickTick
             if (updatedTask.ticktick_id) {
@@ -287,7 +313,7 @@ export class SyncService {
                 dueDate: this.formatTickTickDate(dueDate),
                 tags: ['jira'],
               });
-              
+
               await this.taskService.updateTask(updatedTask.id, {
                 ticktick_id: ticktickTask.id,
               });
@@ -330,7 +356,9 @@ export class SyncService {
         }
       }
 
-      this.logger.log(`Sync completed: ${stats.created} created, ${stats.updated} updated, ${stats.errors} errors`);
+      this.logger.log(
+        `Sync completed: ${stats.created} created, ${stats.updated} updated, ${stats.errors} errors`,
+      );
       return stats;
     } catch (error) {
       this.logger.error('Failed to sync Jira tasks:', error);

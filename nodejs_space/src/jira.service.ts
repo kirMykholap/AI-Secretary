@@ -20,7 +20,8 @@ export class JiraService {
       this.domain = process.env.JIRA_DOMAIN || '';
 
       if (!apiToken || !this.email || !this.domain) {
-        throw new Error('Missing Jira credentials in environment variables');
+        this.logger.warn('Missing Jira credentials in environment variables. Jira integration will be disabled.');
+        return;
       }
 
       this.axiosInstance = axios.create({
@@ -30,7 +31,7 @@ export class JiraService {
           password: apiToken,
         },
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
         },
       });
@@ -48,7 +49,10 @@ export class JiraService {
       const response = await this.axiosInstance.get(`/issue/${issueId}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to get Jira task ${issueId}:`, error.response?.data || error.message);
+      this.logger.error(
+        `Failed to get Jira task ${issueId}:`,
+        error.response?.data || error.message,
+      );
       return null;
     }
   }
@@ -56,9 +60,9 @@ export class JiraService {
   async getAssignedTasks(): Promise<JiraTask[]> {
     try {
       this.logger.log(`Fetching tasks assigned to ${this.email}`);
-      
+
       const jql = `assignee = "${this.email}" AND resolution = Unresolved ORDER BY updated DESC`;
-      
+
       const response = await this.axiosInstance.post('/search/jql', {
         jql,
         fields: ['summary', 'description', 'priority', 'duedate', 'updated'],
@@ -67,10 +71,13 @@ export class JiraService {
 
       const tasks = response.data.issues || [];
       this.logger.log(`Fetched ${tasks.length} tasks from Jira`);
-      
+
       return tasks;
     } catch (error) {
-      this.logger.error('Failed to fetch Jira tasks:', error.response?.data || error.message);
+      this.logger.error(
+        'Failed to fetch Jira tasks:',
+        error.response?.data || error.message,
+      );
       throw error;
     }
   }

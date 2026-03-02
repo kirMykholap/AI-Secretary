@@ -17,25 +17,33 @@ async function bootstrap() {
 
   // Swagger Documentation Setup
   const swaggerPath = 'api-docs';
-  
+
   // Prevent CDN/browser caching of Swagger docs
-  app.use(`/${swaggerPath}`, (req: Request, res: Response, next: NextFunction) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
-    next();
-  });
+  app.use(
+    `/${swaggerPath}`,
+    (req: Request, res: Response, next: NextFunction) => {
+      res.setHeader(
+        'Cache-Control',
+        'no-store, no-cache, must-revalidate, proxy-revalidate',
+      );
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+      next();
+    },
+  );
 
   const config = new DocumentBuilder()
     .setTitle('AI Task Secretary API')
-    .setDescription('API for synchronizing tasks between Jira and TickTick with Telegram bot integration')
+    .setDescription(
+      'API for synchronizing tasks between Jira and TickTick with Telegram bot integration',
+    )
     .setVersion('1.0')
     .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  
+
   SwaggerModule.setup(swaggerPath, app, document, {
     customSiteTitle: 'AI Task Secretary API',
     customCss: `
@@ -55,8 +63,10 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  
+
   logger.log(`Application is running on port ${port}`);
-  logger.log(`API Documentation available at: http://localhost:${port}/${swaggerPath}`);
+  logger.log(
+    `API Documentation available at: http://localhost:${port}/${swaggerPath}`,
+  );
 }
 bootstrap();

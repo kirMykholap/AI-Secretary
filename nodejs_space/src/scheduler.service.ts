@@ -33,7 +33,10 @@ export class SchedulerService {
       await this.telegramService.sendCapacitySelection(this.targetChatId);
       this.logger.log('Morning planning capacity selection sent');
     } catch (error) {
-      this.logger.error(`Error in morning planning: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in morning planning: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -42,7 +45,9 @@ export class SchedulerService {
    * Called from telegram.service when user clicks capacity button
    */
   async processMorningPlan(chatId: number, capacityMinutes: number) {
-    this.logger.log(`Processing morning plan with capacity: ${capacityMinutes} minutes`);
+    this.logger.log(
+      `Processing morning plan with capacity: ${capacityMinutes} minutes`,
+    );
 
     try {
       const today = new Date();
@@ -51,12 +56,18 @@ export class SchedulerService {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       // Get all tasks for today and overdue tasks
-      const todayTasks = await this.taskService.getTasksByDueDateRange(today, tomorrow);
+      const todayTasks = await this.taskService.getTasksByDueDateRange(
+        today,
+        tomorrow,
+      );
       const overdueTasks = await this.taskService.getOverdueTasks(today);
       const allTasks = [...todayTasks, ...overdueTasks];
 
       if (allTasks.length === 0) {
-        await this.telegramService.sendMessage(chatId, '🎉 На сегодня задач нет! Отличный день для отдыха.');
+        await this.telegramService.sendMessage(
+          chatId,
+          '🎉 На сегодня задач нет! Отличный день для отдыха.',
+        );
         return;
       }
 
@@ -65,8 +76,13 @@ export class SchedulerService {
       for (const task of allTasks) {
         if (!task.estimated_minutes) {
           // Estimate time using LLM if not set
-          const estimated = await this.llmService.estimateTaskTime(task.title, task.description || '');
-          await this.taskService.updateTask(task.id, { estimated_minutes: estimated });
+          const estimated = await this.llmService.estimateTaskTime(
+            task.title,
+            task.description || '',
+          );
+          await this.taskService.updateTask(task.id, {
+            estimated_minutes: estimated,
+          });
           task.estimated_minutes = estimated;
         }
         totalMinutes += task.estimated_minutes || 0;
@@ -77,7 +93,9 @@ export class SchedulerService {
       let remainingTasks = [...allTasks];
 
       if (totalMinutes > capacityMinutes) {
-        this.logger.log(`Overloaded: ${totalMinutes} > ${capacityMinutes} minutes. Postponing tasks...`);
+        this.logger.log(
+          `Overloaded: ${totalMinutes} > ${capacityMinutes} minutes. Postponing tasks...`,
+        );
 
         // Sort by priority (ASC) and postponed_count (DESC)
         const sortedTasks = [...allTasks].sort((a, b) => {
@@ -130,19 +148,22 @@ export class SchedulerService {
 
       // Generate morning plan message with task details and LLM motivation
       let planMessage = `📋 *План на сегодня (емкость: ${this.getCapacityLabel(capacityMinutes)})*\n\n`;
-      
+
       remainingTasks.forEach((task, index) => {
         const jiraKey = task.jira_key ? `${task.jira_key} — ` : '';
-        const estimatedTime = task.estimated_minutes ? `${task.estimated_minutes} минут` : 'не оценено';
+        const estimatedTime = task.estimated_minutes
+          ? `${task.estimated_minutes} минут`
+          : 'не оценено';
         planMessage += `${index + 1}. ${jiraKey}${this.getTaskTitleWithoutJiraKey(task.title)}\n`;
         planMessage += `   ⏱ Оценка: ${estimatedTime}\n\n`;
       });
-      
+
       const totalHours = Math.floor(totalMinutes / 60);
       const totalMins = totalMinutes % 60;
-      const totalTimeStr = totalHours > 0 ? `${totalHours}ч ${totalMins}мин` : `${totalMins}мин`;
+      const totalTimeStr =
+        totalHours > 0 ? `${totalHours}ч ${totalMins}мин` : `${totalMins}мин`;
       planMessage += `*Итого: ${totalTimeStr}*\n\n`;
-      
+
       // Add postponed tasks section if any
       if (postponedTasks.length > 0) {
         planMessage += '⏭ *Перенесено на другой день:*\n';
@@ -151,9 +172,9 @@ export class SchedulerService {
         });
         planMessage += '\n';
       }
-      
+
       // Generate LLM motivational message
-      const todayTasksSummary = remainingTasks.map(t => ({
+      const todayTasksSummary = remainingTasks.map((t) => ({
         title: this.getTaskTitleWithoutJiraKey(t.title),
         estimatedMinutes: t.estimated_minutes || 0,
         priority: t.priority,
@@ -165,14 +186,20 @@ export class SchedulerService {
         totalMinutes,
         capacityMinutes,
       );
-      
+
       planMessage += llmMotivation;
 
       await this.telegramService.sendMessage(chatId, planMessage);
       this.logger.log('Morning plan sent successfully');
     } catch (error) {
-      this.logger.error(`Error processing morning plan: ${error.message}`, error.stack);
-      await this.telegramService.sendMessage(chatId, '❌ Ошибка при формировании плана. Попробуйте позже.');
+      this.logger.error(
+        `Error processing morning plan: ${error.message}`,
+        error.stack,
+      );
+      await this.telegramService.sendMessage(
+        chatId,
+        '❌ Ошибка при формировании плана. Попробуйте позже.',
+      );
     }
   }
 
@@ -194,7 +221,8 @@ export class SchedulerService {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       // Get all active tasks due today
-      const incompleteTasks = await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
+      const incompleteTasks =
+        await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
 
       if (incompleteTasks.length === 0) {
         await this.telegramService.sendMessage(
@@ -207,26 +235,34 @@ export class SchedulerService {
       this.logger.log(`Found ${incompleteTasks.length} incomplete tasks`);
 
       // Separate tasks into frequently postponed (>3 times) and regular
-      const frequentlyPostponed = incompleteTasks.filter(task => task.postponed_count > 3);
-      const regularIncomplete = incompleteTasks.filter(task => task.postponed_count <= 3);
+      const frequentlyPostponed = incompleteTasks.filter(
+        (task) => task.postponed_count > 3,
+      );
+      const regularIncomplete = incompleteTasks.filter(
+        (task) => task.postponed_count <= 3,
+      );
 
       // Send single message for regular incomplete tasks
       if (regularIncomplete.length > 0) {
-        const tasksForMessage = regularIncomplete.map(task => ({
+        const tasksForMessage = regularIncomplete.map((task) => ({
           id: task.id,
           title: this.getTaskTitleWithoutJiraKey(task.title),
           jiraKey: task.jira_key || undefined,
         }));
-        
-        await this.telegramService.sendEveningCheckupMessage(this.targetChatId, tasksForMessage);
+
+        await this.telegramService.sendEveningCheckupMessage(
+          this.targetChatId,
+          tasksForMessage,
+        );
       }
 
       // Send individual messages for frequently postponed tasks (special handling)
       for (const task of frequentlyPostponed) {
-        const suggestion = await this.llmService.generatePostponedTaskSuggestion(
-          this.getTaskTitleWithoutJiraKey(task.title),
-          task.postponed_count,
-        );
+        const suggestion =
+          await this.llmService.generatePostponedTaskSuggestion(
+            this.getTaskTitleWithoutJiraKey(task.title),
+            task.postponed_count,
+          );
 
         await this.telegramService.sendFrequentlyPostponedTaskMessage(
           this.targetChatId,
@@ -235,14 +271,17 @@ export class SchedulerService {
           task.postponed_count,
           suggestion,
         );
-        
+
         // Small delay to avoid flooding
         await this.sleep(500);
       }
 
       this.logger.log('Evening checkup completed');
     } catch (error) {
-      this.logger.error(`Error in evening checkup: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in evening checkup: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -260,10 +299,14 @@ export class SchedulerService {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       // Get all active tasks due today
-      const incompleteTasks = await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
+      const incompleteTasks =
+        await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
 
       if (incompleteTasks.length === 0) {
-        await this.telegramService.sendMessage(chatId, '✅ Нет незавершённых задач для переноса.');
+        await this.telegramService.sendMessage(
+          chatId,
+          '✅ Нет незавершённых задач для переноса.',
+        );
         return;
       }
 
@@ -301,15 +344,22 @@ export class SchedulerService {
         }
       }
 
-      const statusMessage = errorCount > 0
-        ? `📅 Перенесено задач: ${successCount}\n⚠️ Ошибок: ${errorCount}\n\nСчётчик переносов обновлён.`
-        : `📅 Все ${successCount} незавершённые задачи перенесены на завтра.\nСчётчик переносов обновлён.`;
+      const statusMessage =
+        errorCount > 0
+          ? `📅 Перенесено задач: ${successCount}\n⚠️ Ошибок: ${errorCount}\n\nСчётчик переносов обновлён.`
+          : `📅 Все ${successCount} незавершённые задачи перенесены на завтра.\nСчётчик переносов обновлён.`;
 
       await this.telegramService.sendMessage(chatId, statusMessage);
       this.logger.log(`Postponed ${successCount} tasks, ${errorCount} errors`);
     } catch (error) {
-      this.logger.error(`Error postponing all tasks: ${error.message}`, error.stack);
-      await this.telegramService.sendMessage(chatId, '❌ Ошибка при переносе задач.');
+      this.logger.error(
+        `Error postponing all tasks: ${error.message}`,
+        error.stack,
+      );
+      await this.telegramService.sendMessage(
+        chatId,
+        '❌ Ошибка при переносе задач.',
+      );
     }
   }
 
@@ -326,7 +376,7 @@ export class SchedulerService {
    * Sleep helper
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -336,7 +386,7 @@ export class SchedulerService {
     if (capacityMinutes === 360) return '💪 100%';
     if (capacityMinutes === 216) return '😐 60%';
     if (capacityMinutes === 108) return '😴 30%';
-    
+
     const hours = Math.floor(capacityMinutes / 60);
     const minutes = capacityMinutes % 60;
     return hours > 0 ? `${hours}ч ${minutes}мин` : `${minutes}мин`;
@@ -379,15 +429,20 @@ export class SchedulerService {
             password: apiToken,
           },
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Content-Type': 'application/json',
           },
         },
       );
-      
-      this.logger.log(`Updated Jira due date for ${jiraKey} to ${formattedDate}`);
+
+      this.logger.log(
+        `Updated Jira due date for ${jiraKey} to ${formattedDate}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to update Jira due date for ${jiraKey}:`, error.response?.data || error.message);
+      this.logger.error(
+        `Failed to update Jira due date for ${jiraKey}:`,
+        error.response?.data || error.message,
+      );
       throw error;
     }
   }

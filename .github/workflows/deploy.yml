@@ -1,0 +1,60 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - prod
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Copy files to VPS
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "."
+        target: "/opt/ai_secretary"
+        strip_components: 0
+
+    - name: Execute deployment script on VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /opt/ai_secretary
+          
+          # Create .env from GitHub Secrets
+          echo "DB_USER=${{ secrets.DB_USER }}" > .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "SYNC_API_KEY=${{ secrets.SYNC_API_KEY }}" >> .env
+          echo "JIRA_DOMAIN=${{ secrets.JIRA_DOMAIN }}" >> .env
+          echo "JIRA_EMAIL=${{ secrets.JIRA_EMAIL }}" >> .env
+          echo "JIRA_ACCOUNT_ID=${{ secrets.JIRA_ACCOUNT_ID }}" >> .env
+          echo "JIRA_API_TOKEN=${{ secrets.JIRA_API_TOKEN }}" >> .env
+          echo "TICKTICK_ACCESS_TOKEN=${{ secrets.TICKTICK_ACCESS_TOKEN }}" >> .env
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}" >> .env
+          echo "DAILY_CAPACITY_MINUTES=${{ secrets.DAILY_CAPACITY_MINUTES }}" >> .env
+          echo "MORNING_CRON=${{ secrets.MORNING_CRON }}" >> .env
+          echo "EVENING_CRON=${{ secrets.EVENING_CRON }}" >> .env
+          echo "TIMEZONE=${{ secrets.TIMEZONE }}" >> .env
+
+          # Deploy with Docker Compose
+          docker compose pull || true
+          docker compose up -d --build
+          
+          # Clean up old images to save space
+          docker system prune -f

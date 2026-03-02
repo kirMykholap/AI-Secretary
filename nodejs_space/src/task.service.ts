@@ -71,10 +71,7 @@ export class TaskService {
     try {
       return await this.prisma.tasks.findMany({
         where: { status },
-        orderBy: [
-          { priority: 'desc' },
-          { due_date: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { due_date: 'asc' }],
       });
     } catch (error) {
       this.logger.error('Failed to get tasks:', error);
@@ -119,7 +116,10 @@ export class TaskService {
         where: { ticktick_id: ticktickId },
       });
     } catch (error) {
-      this.logger.error(`Failed to get task by TickTick ID ${ticktickId}:`, error);
+      this.logger.error(
+        `Failed to get task by TickTick ID ${ticktickId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -130,7 +130,7 @@ export class TaskService {
   async createTask(data: CreateTaskDto): Promise<Task> {
     try {
       this.logger.log(`Creating task: ${data.title}`);
-      
+
       return await this.prisma.tasks.create({
         data: {
           source: data.source,
@@ -157,7 +157,7 @@ export class TaskService {
   async updateTask(id: string, data: UpdateTaskDto): Promise<Task> {
     try {
       this.logger.log(`Updating task: ${id}`);
-      
+
       return await this.prisma.tasks.update({
         where: { id },
         data: {
@@ -177,7 +177,7 @@ export class TaskService {
   async updateTaskByJiraId(jiraId: string, data: UpdateTaskDto): Promise<Task> {
     try {
       this.logger.log(`Updating task by Jira ID: ${jiraId}`);
-      
+
       return await this.prisma.tasks.update({
         where: { jira_id: jiraId },
         data: {
@@ -197,7 +197,7 @@ export class TaskService {
   async deleteTask(id: string): Promise<Task> {
     try {
       this.logger.log(`Deleting task: ${id}`);
-      
+
       return await this.prisma.tasks.update({
         where: { id },
         data: {
@@ -217,7 +217,7 @@ export class TaskService {
   async completeTask(id: string): Promise<Task> {
     try {
       this.logger.log(`Completing task: ${id}`);
-      
+
       return await this.prisma.tasks.update({
         where: { id },
         data: {
@@ -235,14 +235,14 @@ export class TaskService {
   /**
    * Get tasks by source
    */
-  async getTasksBySource(source: string, status: string = 'active'): Promise<Task[]> {
+  async getTasksBySource(
+    source: string,
+    status: string = 'active',
+  ): Promise<Task[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: { source, status },
-        orderBy: [
-          { priority: 'desc' },
-          { due_date: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { due_date: 'asc' }],
       });
     } catch (error) {
       this.logger.error(`Failed to get tasks by source ${source}:`, error);
@@ -263,10 +263,7 @@ export class TaskService {
             { description: { contains: query, mode: 'insensitive' } },
           ],
         },
-        orderBy: [
-          { priority: 'desc' },
-          { due_date: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { due_date: 'asc' }],
       });
     } catch (error) {
       this.logger.error('Failed to search tasks:', error);
@@ -277,7 +274,11 @@ export class TaskService {
   /**
    * Get tasks by due date range
    */
-  async getTasksByDueDateRange(startDate: Date, endDate: Date, status: string = 'active'): Promise<Task[]> {
+  async getTasksByDueDateRange(
+    startDate: Date,
+    endDate: Date,
+    status: string = 'active',
+  ): Promise<Task[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: {
@@ -287,10 +288,7 @@ export class TaskService {
             lt: endDate,
           },
         },
-        orderBy: [
-          { priority: 'desc' },
-          { due_date: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { due_date: 'asc' }],
       });
     } catch (error) {
       this.logger.error('Failed to get tasks by due date range:', error);
@@ -301,7 +299,10 @@ export class TaskService {
   /**
    * Get active tasks by due date range
    */
-  async getActiveTasksByDueDateRange(startDate: Date, endDate: Date): Promise<Task[]> {
+  async getActiveTasksByDueDateRange(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Task[]> {
     return this.getTasksByDueDateRange(startDate, endDate, 'active');
   }
 
@@ -317,10 +318,7 @@ export class TaskService {
             lt: today,
           },
         },
-        orderBy: [
-          { priority: 'desc' },
-          { due_date: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { due_date: 'asc' }],
       });
     } catch (error) {
       this.logger.error('Failed to get overdue tasks:', error);
@@ -354,10 +352,7 @@ export class TaskService {
             gt: 0,
           },
         },
-        orderBy: [
-          { postponed_count: 'desc' },
-          { priority: 'desc' },
-        ],
+        orderBy: [{ postponed_count: 'desc' }, { priority: 'desc' }],
       });
     } catch (error) {
       this.logger.error('Failed to get postponed tasks:', error);
