@@ -5,6 +5,9 @@ WORKDIR /usr/src/app
 COPY package.json yarn.lock ./
 COPY prisma ./prisma/
 
+# Enable corepack for yarn v4
+RUN corepack enable
+
 # Install dependencies
 RUN yarn install --frozen-lockfile
 
