@@ -8,8 +8,11 @@ COPY prisma ./prisma/
 # Enable corepack for yarn v4
 RUN corepack enable
 
+# Force yarn to use node_modules instead of PnP (Plug'n'Play) for Docker builds
+RUN echo "nodeLinker: node-modules" > .yarnrc.yml
+
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN yarn install --immutable
 
 COPY . .
 
