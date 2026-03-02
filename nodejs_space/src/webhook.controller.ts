@@ -11,7 +11,9 @@ export class WebhookController {
 
   @Post('jira')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Jira webhook endpoint for real-time task synchronization' })
+  @ApiOperation({
+    summary: 'Jira webhook endpoint for real-time task synchronization',
+  })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
   async handleJiraWebhook(@Body() payload: any) {
     try {
@@ -27,32 +29,43 @@ export class WebhookController {
       }
 
       // Process events: jira:issue_created, jira:issue_updated
-      if (webhookEvent && (webhookEvent.includes('issue_created') || webhookEvent.includes('issue_updated'))) {
+      if (
+        webhookEvent &&
+        (webhookEvent.includes('issue_created') ||
+          webhookEvent.includes('issue_updated'))
+      ) {
         // Check if issue is assigned to our user using accountId
         const assigneeAccountId = issue.fields?.assignee?.accountId;
         const assigneeEmail = issue.fields?.assignee?.emailAddress;
         const targetAccountId = process.env.JIRA_ACCOUNT_ID;
 
-        this.logger.log(`Issue ${issue.key}: assigneeId=${assigneeAccountId}, email=${assigneeEmail}, targetId=${targetAccountId}`);
+        this.logger.log(
+          `Issue ${issue.key}: assigneeId=${assigneeAccountId}, email=${assigneeEmail}, targetId=${targetAccountId}`,
+        );
 
         // For issue_created: process even if assignee is undefined (will be assigned soon)
         // For issue_updated: check if it's assigned to target user using accountId
-        const shouldProcess = webhookEvent.includes('issue_created') || 
-                             (assigneeAccountId === targetAccountId);
+        const shouldProcess =
+          webhookEvent.includes('issue_created') ||
+          assigneeAccountId === targetAccountId;
 
         if (shouldProcess) {
-          this.logger.log(`Processing Jira issue ${issue.key}${assigneeAccountId ? ' assigned to account ' + assigneeAccountId : ' (assignee pending)'}`);
-          
+          this.logger.log(
+            `Processing Jira issue ${issue.key}${assigneeAccountId ? ' assigned to account ' + assigneeAccountId : ' (assignee pending)'}`,
+          );
+
           // Trigger sync for this specific issue
           await this.syncService.syncSingleJiraTask(issue.key);
-          
-          return { 
-            success: true, 
+
+          return {
+            success: true,
             message: `Задача ${issue.key} синхронизирована успешно`,
-            taskKey: issue.key 
+            taskKey: issue.key,
           };
         } else {
-          this.logger.log(`Issue ${issue.key} not assigned to target user, skipping`);
+          this.logger.log(
+            `Issue ${issue.key} not assigned to target user, skipping`,
+          );
           return { success: true, message: 'Task not assigned to target user' };
         }
       }
