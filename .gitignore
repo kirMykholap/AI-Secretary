@@ -18,3 +18,9 @@ out
 .deploy
 .logs
 *.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+!.env.template
+!.env.example
