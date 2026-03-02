@@ -1,4 +1,10 @@
-import { Controller, Post, Headers, UnauthorizedException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Headers,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import { SyncService } from './sync.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 
@@ -11,7 +17,11 @@ export class SyncController {
 
   @Post('sync')
   @ApiOperation({ summary: 'Trigger Jira to TickTick synchronization' })
-  @ApiHeader({ name: 'X-API-Key', description: 'API key for authentication', required: true })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'API key for authentication',
+    required: true,
+  })
   @ApiResponse({ status: 200, description: 'Sync completed successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async syncTasks(@Headers('x-api-key') apiKey: string) {
@@ -26,7 +36,7 @@ export class SyncController {
 
     try {
       const result = await this.syncService.syncAllJiraTasks();
-      
+
       return {
         success: true,
         message: 'Synchronization completed',
