@@ -1,13 +1,13 @@
 import { Controller, Post, Body, HttpCode, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { SyncService } from './sync.service';
+import { TaskSyncOrchestrator } from '../../core/application/orchestrators/task-sync.orchestrator';
 
 @ApiTags('Webhooks')
 @Controller('webhook')
 export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);
 
-  constructor(private readonly syncService: SyncService) {}
+  constructor(private readonly taskSyncOrchestrator: TaskSyncOrchestrator) { }
 
   @Post('jira')
   @HttpCode(200)
@@ -55,7 +55,7 @@ export class WebhookController {
           );
 
           // Trigger sync for this specific issue
-          await this.syncService.syncSingleJiraTask(issue.key);
+          await this.taskSyncOrchestrator.syncSingleJiraTask(issue.key);
 
           return {
             success: true,

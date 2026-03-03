@@ -1,44 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { TaskService } from './task.service';
-import { TelegramService } from './telegram.service';
-import { LlmService } from './llm.service';
-import { TickTickService } from './ticktick.service';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { TASK_REPOSITORY } from '../../domain/interfaces/task-repository.interface';
+import type { ITaskRepository } from '../../domain/interfaces/task-repository.interface';
+import { MESSAGING_ADAPTER } from '../../domain/interfaces/messaging-adapter.interface';
+import type { IMessagingAdapter } from '../../domain/interfaces/messaging-adapter.interface';
+import { TICKTICK_ADAPTER } from '../../domain/interfaces/sync-adapter.interface';
+import type { ISyncTargetAdapter } from '../../domain/interfaces/sync-adapter.interface';
+import { JIRA_ADAPTER } from '../../domain/interfaces/sync-adapter.interface';
+import type { ISyncSourceAdapter } from '../../domain/interfaces/sync-adapter.interface';
+import { INTELLIGENCE_ADAPTER } from '../../domain/interfaces/intelligence-adapter.interface';
+import type { IIntelligenceAdapter } from '../../domain/interfaces/intelligence-adapter.interface';
 
 @Injectable()
-export class SchedulerService {
-  private readonly logger = new Logger(SchedulerService.name);
+export class PlanningOrchestrator {
+  private readonly logger = new Logger(PlanningOrchestrator.name);
   private readonly targetChatId = 337519310; // Your Telegram chat ID
 
   constructor(
-    private readonly taskService: TaskService,
-    private readonly telegramService: TelegramService,
-    private readonly llmService: LlmService,
-    private readonly tickTickService: TickTickService,
-  ) {}
-
-  /**
-   * Morning planning at 10:00 Europe/Kiev
-   * Sends capacity selection buttons to user
-   */
-  @Cron('0 10 * * *', {
-    name: 'morning-planning',
-    timeZone: 'Europe/Kiev',
-  })
-  async handleMorningPlanning() {
-    this.logger.log('Starting morning planning...');
-
-    try {
-      // Send capacity selection message with inline buttons
-      await this.telegramService.sendCapacitySelection(this.targetChatId);
-      this.logger.log('Morning planning capacity selection sent');
-    } catch (error) {
-      this.logger.error(
-        `Error in morning planning: ${error.message}`,
-        error.stack,
-      );
-    }
-  }
+    @Inject(TASK_REPOSITORY) private readonly taskService: ITaskRepository,
+    @Inject(MESSAGING_ADAPTER) private readonly telegramService: IMessagingAdapter,
+    @Inject(INTELLIGENCE_ADAPTER) private readonly llmService: IIntelligenceAdapter,
+    @Inject(TICKTICK_ADAPTER) private readonly tickTickService: ISyncTargetAdapter,
+    @Inject(JIRA_ADAPTER) private readonly jiraAdapter: ISyncSourceAdapter,
+  ) { }
 
   /**
    * Process morning plan after user selects capacity
@@ -204,14 +187,10 @@ export class SchedulerService {
   }
 
   /**
-   * Evening checkup at 21:00 Europe/Kiev
+   * Process evening checkup
    * Check incomplete tasks and send reminders
    */
-  @Cron('0 21 * * *', {
-    name: 'evening-checkup',
-    timeZone: 'Europe/Kiev',
-  })
-  async handleEveningCheckup() {
+  async processEveningCheckup() {
     this.logger.log('Starting evening checkup...');
 
     try {
@@ -334,7 +313,7 @@ export class SchedulerService {
 
           // Update in Jira if synced
           if (task.jira_key) {
-            await this.updateJiraDueDate(task.jira_key, newDueDate);
+            await this.jiraAdapter.updateDueDate(task.jira_key, newDueDate);
           }
 
           successCount++;
@@ -401,49 +380,5 @@ export class SchedulerService {
     return match ? match[2] : title;
   }
 
-  /**
-   * Update due date in Jira
-   */
-  private async updateJiraDueDate(jiraKey: string, dueDate: Date) {
-    try {
-      const year = dueDate.getFullYear();
-      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
-      const day = String(dueDate.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
 
-      const domain = process.env.JIRA_DOMAIN || '';
-      const email = process.env.JIRA_EMAIL || '';
-      const apiToken = process.env.JIRA_API_TOKEN || '';
-
-      const axios = require('axios');
-      await axios.put(
-        `https://${domain}/rest/api/3/issue/${jiraKey}`,
-        {
-          fields: {
-            duedate: formattedDate,
-          },
-        },
-        {
-          auth: {
-            username: email,
-            password: apiToken,
-          },
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      this.logger.log(
-        `Updated Jira due date for ${jiraKey} to ${formattedDate}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to update Jira due date for ${jiraKey}:`,
-        error.response?.data || error.message,
-      );
-      throw error;
-    }
-  }
 }

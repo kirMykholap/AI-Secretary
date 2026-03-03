@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
+import { TaskEntity } from '../../core/domain/entities/task.entity';
 
 export interface CreateTaskDto {
   source: string;
@@ -33,31 +35,9 @@ export interface UpdateTaskDto {
   parent_id?: string;
 }
 
-export interface Task {
-  id: string;
-  source: string;
-  source_id: string | null;
-  title: string;
-  description: string | null;
-  priority: number;
-  due_date: Date | null;
-  tags: string[];
-  status: string;
-  jira_id: string | null;
-  jira_key: string | null;
-  ticktick_id: string | null;
-  estimated_minutes: number | null;
-  actual_minutes: number | null;
-  postponed_count: number;
-  parent_id: string | null;
-  created_at: Date;
-  updated_at: Date;
-  completed_at: Date | null;
-}
-
 @Injectable()
-export class TaskService {
-  private readonly logger = new Logger(TaskService.name);
+export class TaskRepository implements ITaskRepository {
+  private readonly logger = new Logger(TaskRepository.name);
   private prisma: PrismaClient;
 
   constructor() {
@@ -67,7 +47,7 @@ export class TaskService {
   /**
    * Get all active tasks
    */
-  async getAllTasks(status: string = 'active'): Promise<Task[]> {
+  async getAllTasks(status: string = 'active'): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: { status },
@@ -82,7 +62,7 @@ export class TaskService {
   /**
    * Get task by ID
    */
-  async getTaskById(id: string): Promise<Task | null> {
+  async getTaskById(id: string): Promise<any | null> {
     try {
       return await this.prisma.tasks.findUnique({
         where: { id },
@@ -96,7 +76,7 @@ export class TaskService {
   /**
    * Get task by Jira ID
    */
-  async getTaskByJiraId(jiraId: string): Promise<Task | null> {
+  async getTaskByJiraId(jiraId: string): Promise<any | null> {
     try {
       return await this.prisma.tasks.findUnique({
         where: { jira_id: jiraId },
@@ -110,7 +90,7 @@ export class TaskService {
   /**
    * Get task by TickTick ID
    */
-  async getTaskByTickTickId(ticktickId: string): Promise<Task | null> {
+  async getTaskByTickTickId(ticktickId: string): Promise<any | null> {
     try {
       return await this.prisma.tasks.findUnique({
         where: { ticktick_id: ticktickId },
@@ -127,7 +107,7 @@ export class TaskService {
   /**
    * Create new task
    */
-  async createTask(data: CreateTaskDto): Promise<Task> {
+  async createTask(data: CreateTaskDto): Promise<any> {
     try {
       this.logger.log(`Creating task: ${data.title}`);
 
@@ -154,7 +134,7 @@ export class TaskService {
   /**
    * Update task
    */
-  async updateTask(id: string, data: UpdateTaskDto): Promise<Task> {
+  async updateTask(id: string, data: UpdateTaskDto): Promise<any> {
     try {
       this.logger.log(`Updating task: ${id}`);
 
@@ -174,7 +154,7 @@ export class TaskService {
   /**
    * Update task by Jira ID
    */
-  async updateTaskByJiraId(jiraId: string, data: UpdateTaskDto): Promise<Task> {
+  async updateTaskByJiraId(jiraId: string, data: UpdateTaskDto): Promise<any> {
     try {
       this.logger.log(`Updating task by Jira ID: ${jiraId}`);
 
@@ -194,7 +174,7 @@ export class TaskService {
   /**
    * Delete task (soft delete - mark as deleted)
    */
-  async deleteTask(id: string): Promise<Task> {
+  async deleteTask(id: string): Promise<any> {
     try {
       this.logger.log(`Deleting task: ${id}`);
 
@@ -214,7 +194,7 @@ export class TaskService {
   /**
    * Complete task
    */
-  async completeTask(id: string): Promise<Task> {
+  async completeTask(id: string): Promise<any> {
     try {
       this.logger.log(`Completing task: ${id}`);
 
@@ -238,7 +218,7 @@ export class TaskService {
   async getTasksBySource(
     source: string,
     status: string = 'active',
-  ): Promise<Task[]> {
+  ): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: { source, status },
@@ -253,7 +233,7 @@ export class TaskService {
   /**
    * Search tasks by title
    */
-  async searchTasks(query: string, status: string = 'active'): Promise<Task[]> {
+  async searchTasks(query: string, status: string = 'active'): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: {
@@ -278,7 +258,7 @@ export class TaskService {
     startDate: Date,
     endDate: Date,
     status: string = 'active',
-  ): Promise<Task[]> {
+  ): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: {
@@ -302,14 +282,14 @@ export class TaskService {
   async getActiveTasksByDueDateRange(
     startDate: Date,
     endDate: Date,
-  ): Promise<Task[]> {
+  ): Promise<any[]> {
     return this.getTasksByDueDateRange(startDate, endDate, 'active');
   }
 
   /**
    * Get overdue tasks (due date < today, status = active)
    */
-  async getOverdueTasks(today: Date): Promise<Task[]> {
+  async getOverdueTasks(today: Date): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: {
@@ -329,7 +309,7 @@ export class TaskService {
   /**
    * Get task by Jira key (e.g., HOME-7)
    */
-  async getTaskByJiraKey(jiraKey: string): Promise<Task | null> {
+  async getTaskByJiraKey(jiraKey: string): Promise<any | null> {
     try {
       return await this.prisma.tasks.findFirst({
         where: { jira_key: jiraKey },
@@ -343,7 +323,7 @@ export class TaskService {
   /**
    * Get tasks with postponed_count > 0
    */
-  async getPostponedTasks(status: string = 'active'): Promise<Task[]> {
+  async getPostponedTasks(status: string = 'active'): Promise<any[]> {
     try {
       return await this.prisma.tasks.findMany({
         where: {

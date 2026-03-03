@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
-import { JiraTask } from './types';
+import { JiraTask } from '../../types';
+import { ISyncSourceAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
 
 @Injectable()
-export class JiraService {
-  private readonly logger = new Logger(JiraService.name);
+export class JiraAdapter implements ISyncSourceAdapter {
+  private readonly logger = new Logger(JiraAdapter.name);
   private axiosInstance: AxiosInstance;
   private email: string;
   private domain: string;
@@ -76,6 +77,34 @@ export class JiraService {
     } catch (error) {
       this.logger.error(
         'Failed to fetch Jira tasks:',
+        error.response?.data || error.message,
+      );
+      throw error;
+    }
+  }
+
+  async updateDueDate(jiraKey: string, dueDate: Date): Promise<void> {
+    try {
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+      const day = String(dueDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+
+      await this.axiosInstance.put(
+        `/issue/${jiraKey}`,
+        {
+          fields: {
+            duedate: formattedDate,
+          },
+        }
+      );
+
+      this.logger.log(
+        `Updated Jira due date for ${jiraKey} to ${formattedDate}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update Jira due date for ${jiraKey}:`,
         error.response?.data || error.message,
       );
       throw error;

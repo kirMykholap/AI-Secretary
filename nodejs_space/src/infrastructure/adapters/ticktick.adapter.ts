@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
-import { TickTickTask } from './types';
+import { TickTickTask } from '../../types';
+import { ISyncTargetAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
 
 @Injectable()
-export class TickTickService {
-  private readonly logger = new Logger(TickTickService.name);
+export class TickTickAdapter implements ISyncTargetAdapter {
+  private readonly logger = new Logger(TickTickAdapter.name);
   private axiosInstance: AxiosInstance;
   private jiraProjectId: string | null = null;
 

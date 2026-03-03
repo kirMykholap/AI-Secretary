@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
+import { IIntelligenceAdapter } from '../../core/domain/interfaces/intelligence-adapter.interface';
 
 @Injectable()
-export class LlmService {
-  private readonly logger = new Logger(LlmService.name);
+export class LlmAdapter implements IIntelligenceAdapter {
+  private readonly logger = new Logger(LlmAdapter.name);
   private openai: OpenAI;
 
   constructor() {
