@@ -46,6 +46,9 @@ export class TickTickAdapter implements ISyncTargetAdapter {
    * Get or create "Jira" project for synced tasks
    */
   private async ensureJiraProject(): Promise<string> {
+    if (!this.axiosInstance) {
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     if (this.jiraProjectId !== null) {
       return this.jiraProjectId;
     }
@@ -83,6 +86,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async getAllTasks(): Promise<TickTickTask[]> {
+    if (!this.axiosInstance) {
+      this.logger.warn('TickTick integration disabled. Cannot fetch tasks.');
+      return [];
+    }
     try {
       this.logger.log('Fetching all tasks from TickTick');
 
@@ -125,6 +132,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async createTask(task: TickTickTask): Promise<TickTickTask> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot create task ${task.title}.`);
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     try {
       this.logger.log(`Creating task in TickTick: ${task.title}`);
 
@@ -157,6 +168,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
     taskId: string,
     task: Partial<TickTickTask>,
   ): Promise<TickTickTask> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot update task ${taskId}.`);
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     try {
       this.logger.log(`Updating task in TickTick: ${taskId}`);
       this.logger.debug(`Update payload: ${JSON.stringify(task)}`);
@@ -176,6 +191,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async getTaskById(taskId: string): Promise<TickTickTask | null> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot get task ${taskId}.`);
+      return null;
+    }
     try {
       const response = await this.axiosInstance.get(`/task/${taskId}`);
       return response.data;
