@@ -18,10 +18,12 @@ When the USER requests to "finish the session" or "save progress", you must exec
     `cp .gemini/antigravity/brain/*/task.md docs/sessions/{VERSION}/task.md`
     `cp .gemini/antigravity/brain/*/implementation_plan.md docs/sessions/{VERSION}/implementation_plan.md`
 
-4.  **Append a Summary**
-    Prepend a 2-3 sentence summary at the very top of `docs/sessions/{VERSION}/task.md` detailing precisely what was achieved in this session.
+5.  **Run Security Scan**
+    Execute a global search (grep) to ensure no hardcoded secrets or sensitive IP addresses remain in the repository:
+    `grep -rE "185\.[0-9]{1,3}|[a-zA-Z0-9.-]*@gmail\.com|kir-[a-zA-Z0-9-]*\.atlassian\.net" . --exclude-dir node_modules --exclude-dir .git`
+    If ANY matches are found, you MUST replace them with placeholders (e.g., `<YOUR_IP>`, `<YOUR_EMAIL>`) before proceeding!
 
-5.  **Commit the History**
+6.  **Commit the History**
     Commit these documentation files to git so they are permanently tracked:
     `git add docs/sessions/{VERSION}`
     `git commit -m "docs: archive session {VERSION} progress"`
