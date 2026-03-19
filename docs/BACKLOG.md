@@ -7,10 +7,10 @@ AI Agents must consult this document at the start of new sessions and append ide
 - **Multi-user Support (Multi-tenancy):** Allow multiple Telegram users to have their own AI Secretary instances. Store `TickTickToken` and `JiraToken` in the DB linked to a specific `TelegramUserID`.
 
 ### Core Improvements
-- **Two-way sync:** TickTick completion → Jira status update
+- **Telegram Mini App / Native Dashboard:** Build a powerful UI inside Telegram to manage tasks (complete, postpone, prioritize, delete) and view server logs. Telegram will act as the primary controller for Jira.
+- **TickTick Deprecation:** Keep TickTick as a read-only visual widget for now. Do NOT add two-way sync to it. In the future, replace it with a custom personal widget.
 - **Task deletion:** Handle deleted tasks in Jira
-- **Bulk operations:** Telegram command to mark multiple tasks done
-- **Error recovery:** Retry failed TickTick API calls
+- **Error recovery:** Retry failed API calls
 
 ### LLM Integration
 - **Smart categorization:** Auto-detect task category from description
