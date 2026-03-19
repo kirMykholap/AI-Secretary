@@ -5,6 +5,8 @@ AI-powered personal secretary system that synchronizes tasks from multiple sourc
 
 As of **v3.0**, the project utilizes a **Hexagonal Architecture (Ports & Adapters)** combined with an **Event-Driven** asynchronous flow (BullMQ + EventEmitter) to ensure high decoupling, scalability, and clean boundaries between the business logic and external integrations.
 
+> 🚀 **For server infrastructure, CI/CD pipelines, and deployment instructions, refer to the [Deployment Guide](DEPLOYMENT.md).**
+
 ## Tech Stack
 - **Backend Framework:** NestJS (TypeScript)
 - **Database:** PostgreSQL with Prisma ORM
