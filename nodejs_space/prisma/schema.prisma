@@ -57,3 +57,15 @@ model task_mappings {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
+
+// OAuth Tokens for Integrations
+model IntegrationToken {
+  id            String    @id @default(uuid())
+  provider      String    @unique @db.VarChar(50) // e.g. "ticktick"
+  access_token  String    @db.Text
+  refresh_token String?   @db.Text
+  expires_at    DateTime?
+  updated_at    DateTime  @updatedAt
+
+  @@map("integration_tokens")
+}

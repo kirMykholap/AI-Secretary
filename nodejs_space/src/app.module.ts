@@ -13,6 +13,7 @@ import { PrismaService } from './prisma.service';
 import { WebhookController } from './transport/webhooks/jira-webhook.controller';
 import { SyncController } from './transport/webhooks/sync.controller';
 import { TelegramUpdate } from './transport/webhooks/telegram.update';
+import { TickTickAuthController } from './transport/webhooks/ticktick-auth.controller';
 
 // Cron Scheduler
 import { SchedulerController } from './transport/cron/scheduler.controller';
@@ -79,6 +80,7 @@ import { INTELLIGENCE_ADAPTER } from './core/domain/interfaces/intelligence-adap
     WebhookController,
     SyncController,
     SchedulerController,
+    TickTickAuthController,
   ],
   providers: [
     AppService,
