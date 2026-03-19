@@ -24,7 +24,7 @@ The deployment is fully automated via GitHub Actions (`.github/workflows/deploy.
 To allow the deployment pipeline to function, the following repositories secrets MUST be configured in your GitHub Repository settings:
 
 ### Infrastructure Secrets
-- `HOST`: VPS IP Address (e.g. `8.8.8.8`)
+- `HOST`: VPS IP Address (e.g. `[IP_ADDRESS]`)
 - `USERNAME`: SSH Username (e.g. `root`)
 - `SSH_PRIVATE_KEY`: Private SSH Key to connect to the VPS.
 
@@ -67,3 +67,24 @@ docker compose restart
 # Manually trigger a database migration (if CI/CD failed)
 docker compose exec app yarn prisma migrate deploy
 ```
+
+## 🐛 Troubleshooting
+
+### Webhook Not Receiving Events
+**Check:**
+1. Jira webhook status (`System -> Webhooks`).
+2. Webhook URL is correct targeting your `DOMAIN_NAME` over HTTPS.
+3. Run `docker compose logs -f caddy` to see if requests are reaching the proxy.
+
+### Tasks Not Appearing in TickTick
+**Check:**
+1. TickTick project "Jira" exists (auto-created on first sync).
+2. Look at logs: `docker compose logs -f app | grep TickTick`.
+3. Ensure OAuth tokens are stored in the DB (table `integration_tokens`).
+
+### Database Connection Issues
+**Symptoms:** `PrismaClientInitializationError`
+**Solutions:**
+1. Validate PostgreSQL container health: `docker ps`.
+2. Ensure `yarn prisma generate` matches the Prisma version.
+3. Restart DB container: `docker compose restart db`.
