@@ -1,19 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Context } from 'telegraf';
-import axios from 'axios';
-import { TaskService } from './task.service';
-import { TickTickService } from './ticktick.service';
+import { IMessagingAdapter } from '../../core/domain/interfaces/messaging-adapter.interface';
+import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.interface';
+import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
+import { TICKTICK_ADAPTER } from '../../core/domain/interfaces/sync-adapter.interface';
+import type { ISyncTargetAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
+import { JIRA_ADAPTER } from '../../core/domain/interfaces/sync-adapter.interface';
+import type { ISyncSourceAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
 
 @Injectable()
-export class TelegramService {
-  private readonly logger = new Logger(TelegramService.name);
+export class TelegramAdapter implements IMessagingAdapter {
+  private readonly logger = new Logger(TelegramAdapter.name);
 
   constructor(
     @InjectBot() private readonly bot: Telegraf<Context>,
-    private readonly taskService: TaskService,
-    private readonly tickTickService: TickTickService,
-  ) {}
+    @Inject(TASK_REPOSITORY) private readonly taskService: ITaskRepository,
+    @Inject(TICKTICK_ADAPTER) private readonly tickTickService: ISyncTargetAdapter,
+    @Inject(JIRA_ADAPTER) private readonly jiraAdapter: ISyncSourceAdapter,
+  ) { }
 
   async sendMessage(
     chatId: number,
@@ -182,34 +187,7 @@ export class TelegramService {
   }
 
   private async updateJiraDueDate(jiraKey: string, dueDate: Date) {
-    try {
-      const year = dueDate.getFullYear();
-      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
-      const day = String(dueDate.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-
-      const domain = process.env.JIRA_DOMAIN || '';
-      const email = process.env.JIRA_EMAIL || '';
-      const apiToken = process.env.JIRA_API_TOKEN || '';
-
-      await axios.put(
-        `https://${domain}/rest/api/3/issue/${jiraKey}`,
-        { fields: { duedate: formattedDate } },
-        {
-          auth: { username: email, password: apiToken },
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    } catch (error: any) {
-      this.logger.error(
-        `Failed to update Jira due date for ${jiraKey}:`,
-        error.response?.data || error.message,
-      );
-      throw error;
-    }
+    await this.jiraAdapter.updateDueDate(jiraKey, dueDate);
   }
 
   async sendNewTaskNotification(

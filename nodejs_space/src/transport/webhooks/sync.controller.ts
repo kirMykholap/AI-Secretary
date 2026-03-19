@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import { SyncService } from './sync.service';
+import { TaskSyncOrchestrator } from '../../core/application/orchestrators/task-sync.orchestrator';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 
 @ApiTags('Sync')
@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 export class SyncController {
   private readonly logger = new Logger(SyncController.name);
 
-  constructor(private readonly syncService: SyncService) {}
+  constructor(private readonly taskSyncOrchestrator: TaskSyncOrchestrator) { }
 
   @Post('sync')
   @ApiOperation({ summary: 'Trigger Jira to TickTick synchronization' })
@@ -35,7 +35,7 @@ export class SyncController {
     }
 
     try {
-      const result = await this.syncService.syncAllJiraTasks();
+      const result = await this.taskSyncOrchestrator.syncAllJiraTasks();
 
       return {
         success: true,

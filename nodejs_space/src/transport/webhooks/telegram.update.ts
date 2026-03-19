@@ -8,9 +8,10 @@ import {
 } from 'nestjs-telegraf';
 import { Telegraf, Context, Markup } from 'telegraf';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
-import { TaskService } from './task.service';
-import { SchedulerService } from './scheduler.service';
-import { TelegramService } from './telegram.service';
+import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.interface';
+import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
+import { PlanningOrchestrator } from '../../core/application/orchestrators/planning.orchestrator';
+import { TelegramAdapter } from '../../infrastructure/adapters/telegram.adapter';
 
 @Update()
 export class TelegramUpdate {
@@ -18,11 +19,11 @@ export class TelegramUpdate {
 
   constructor(
     @InjectBot() private bot: Telegraf<Context>,
-    private readonly taskService: TaskService,
-    @Inject(forwardRef(() => SchedulerService))
-    private readonly schedulerService: SchedulerService,
-    private readonly telegramService: TelegramService,
-  ) {}
+    @Inject(TASK_REPOSITORY) private readonly taskService: ITaskRepository,
+    @Inject(forwardRef(() => PlanningOrchestrator))
+    private readonly schedulerService: PlanningOrchestrator,
+    private readonly telegramService: TelegramAdapter,
+  ) { }
 
   @Start()
   async onStart(@Ctx() ctx: Context) {
