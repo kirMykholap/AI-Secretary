@@ -49,9 +49,9 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DAILY_CAPACITY_MINUTES=${DAILY_CAPACITY_MINUTES:-360}
-      - MORNING_CRON=${MORNING_CRON:-'0 10 * * *'}
-      - EVENING_CRON=${EVENING_CRON:-'0 21 * * *'}
-      - TIMEZONE=${TIMEZONE:-'Europe/Kiev'}
+      - MORNING_CRON=${MORNING_CRON:-0 10 * * *}
+      - EVENING_CRON=${EVENING_CRON:-0 21 * * *}
+      - TIMEZONE=${TIMEZONE:-Europe/Kiev}
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
