@@ -3,6 +3,7 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Context } from 'telegraf';
 import { IMessagingAdapter } from '../../core/domain/interfaces/messaging-adapter.interface';
 import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.interface';
+import { formatTickTickDate } from '../utils/date.utils';
 import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
 import { TICKTICK_ADAPTER } from '../../core/domain/interfaces/sync-adapter.interface';
 import type { ISyncTargetAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
@@ -159,7 +160,7 @@ export class TelegramAdapter implements IMessagingAdapter {
 
       if (task.ticktick_id) {
         await this.tickTickService.updateTask(task.ticktick_id, {
-          dueDate: this.formatTickTickDate(newDueDate),
+          dueDate: formatTickTickDate(newDueDate),
         });
         this.logger.log(`Updated due date in TickTick: ${task.ticktick_id}`);
       }
@@ -220,13 +221,6 @@ export class TelegramAdapter implements IMessagingAdapter {
       this.logger.error('Failed to delete task:', error);
       await this.sendMessage(chatId, '❌ Ошибка при отмене задачи.');
     }
-  }
-
-  private formatTickTickDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}T23:59:00+0200`;
   }
 
   private async updateJiraDueDate(jiraKey: string, dueDate: Date) {

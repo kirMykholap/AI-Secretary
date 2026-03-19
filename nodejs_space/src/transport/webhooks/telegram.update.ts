@@ -151,16 +151,14 @@ export class TelegramUpdate {
 
   @Action(/^dash_page_(\d+)$/)
   async onDashPage(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const page = parseInt(ctx.match[1], 10);
+    const page = parseInt((ctx as any).match[1], 10);
     await ctx.answerCbQuery();
     await this.sendDashboard(ctx, page);
   }
 
   @Action(/^task_open_(.+)$/)
   async onTaskOpen(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const task = await this.taskService.getTaskById(taskId);
     
     if (!task) {
@@ -194,8 +192,7 @@ export class TelegramUpdate {
 
   @Action(/^task_done_(.+)$/)
   async onTaskDone(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
@@ -211,8 +208,7 @@ export class TelegramUpdate {
 
   @Action(/^task_postpone1_(.+)$/)
   async onTaskPostpone1(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
@@ -228,8 +224,7 @@ export class TelegramUpdate {
 
   @Action(/^task_del_(.+)$/)
   async onTaskDel(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
@@ -316,8 +311,7 @@ export class TelegramUpdate {
 
   @Action(/^capacity_(\d+)$/)
   async onCapacitySelection(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const match = ctx.match;
+    const match = (ctx as any).match;
     const capacity = parseInt(match[1], 10);
     const chatId = ctx.chat?.id;
 
@@ -341,8 +335,7 @@ export class TelegramUpdate {
 
   @Action(/^postpone_(.+)$/)
   async onPostponeTask(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
@@ -357,8 +350,7 @@ export class TelegramUpdate {
 
   @Action(/^delete_(.+)$/)
   async onDeleteTask(@Ctx() ctx: Context) {
-    // @ts-ignore
-    const taskId = ctx.match[1];
+    const taskId = (ctx as any).match[1];
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
