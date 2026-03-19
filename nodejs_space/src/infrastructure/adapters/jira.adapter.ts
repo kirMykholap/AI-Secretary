@@ -45,6 +45,10 @@ export class JiraAdapter implements ISyncSourceAdapter {
   }
 
   async getTaskById(issueId: string): Promise<JiraTask | null> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`Jira integration disabled. Cannot fetch task ${issueId}.`);
+      return null;
+    }
     try {
       this.logger.log(`Fetching Jira task: ${issueId}`);
       const response = await this.axiosInstance.get(`/issue/${issueId}`);
@@ -59,6 +63,10 @@ export class JiraAdapter implements ISyncSourceAdapter {
   }
 
   async getAssignedTasks(): Promise<JiraTask[]> {
+    if (!this.axiosInstance) {
+      this.logger.warn('Jira integration disabled. Cannot fetch assigned tasks.');
+      return [];
+    }
     try {
       this.logger.log(`Fetching tasks assigned to ${this.email}`);
 
@@ -84,6 +92,10 @@ export class JiraAdapter implements ISyncSourceAdapter {
   }
 
   async updateDueDate(jiraKey: string, dueDate: Date): Promise<void> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`Jira integration disabled. Cannot update due date for ${jiraKey}.`);
+      return;
+    }
     try {
       const year = dueDate.getFullYear();
       const month = String(dueDate.getMonth() + 1).padStart(2, '0');

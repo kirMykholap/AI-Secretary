@@ -45,6 +45,9 @@ services:
       - JIRA_ACCOUNT_ID=${JIRA_ACCOUNT_ID}
       - JIRA_API_TOKEN=${JIRA_API_TOKEN}
       - TICKTICK_ACCESS_TOKEN=${TICKTICK_ACCESS_TOKEN}
+      - TICKTICK_CLIENT_ID=${TICKTICK_CLIENT_ID}
+      - TICKTICK_CLIENT_SECRET=${TICKTICK_CLIENT_SECRET}
+      - TICKTICK_REDIRECT_URI=${TICKTICK_REDIRECT_URI:-https://${DOMAIN_NAME}/oauth/ticktick/callback}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -63,5 +66,18 @@ services:
       redis:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: ai_secretary_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAIN_NAME:-localhost} --to http://app:3000
+    depends_on:
+      - app
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

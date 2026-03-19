@@ -1,21 +1,28 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { TickTickTask } from '../../types';
 import { ISyncTargetAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
+import { PrismaService } from '../../prisma.service';
 
 @Injectable()
-export class TickTickAdapter implements ISyncTargetAdapter {
+export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
   private readonly logger = new Logger(TickTickAdapter.name);
-  private axiosInstance: AxiosInstance;
+  private axiosInstance: AxiosInstance | null = null;
   private jiraProjectId: string | null = null;
 
-  constructor() {
-    this.initializeClient();
+  constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    await this.initializeClient();
   }
 
-  private initializeClient() {
+  private async initializeClient() {
     try {
-      const accessToken = process.env.TICKTICK_ACCESS_TOKEN;
+      const tokenRecord = await this.prisma.integrationToken.findUnique({
+        where: { provider: 'ticktick' }
+      });
+
+      const accessToken = tokenRecord?.access_token || process.env.TICKTICK_ACCESS_TOKEN;
 
       if (!accessToken) {
         this.logger.warn('Missing TickTick access token in environment variables. TickTick integration will be disabled.');
@@ -46,6 +53,9 @@ export class TickTickAdapter implements ISyncTargetAdapter {
    * Get or create "Jira" project for synced tasks
    */
   private async ensureJiraProject(): Promise<string> {
+    if (!this.axiosInstance) {
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     if (this.jiraProjectId !== null) {
       return this.jiraProjectId;
     }
@@ -83,6 +93,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async getAllTasks(): Promise<TickTickTask[]> {
+    if (!this.axiosInstance) {
+      this.logger.warn('TickTick integration disabled. Cannot fetch tasks.');
+      return [];
+    }
     try {
       this.logger.log('Fetching all tasks from TickTick');
 
@@ -125,6 +139,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async createTask(task: TickTickTask): Promise<TickTickTask> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot create task ${task.title}.`);
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     try {
       this.logger.log(`Creating task in TickTick: ${task.title}`);
 
@@ -157,6 +175,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
     taskId: string,
     task: Partial<TickTickTask>,
   ): Promise<TickTickTask> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot update task ${taskId}.`);
+      throw new Error('TickTick integration is disabled (missing credentials)');
+    }
     try {
       this.logger.log(`Updating task in TickTick: ${taskId}`);
       this.logger.debug(`Update payload: ${JSON.stringify(task)}`);
@@ -176,6 +198,10 @@ export class TickTickAdapter implements ISyncTargetAdapter {
   }
 
   async getTaskById(taskId: string): Promise<TickTickTask | null> {
+    if (!this.axiosInstance) {
+      this.logger.warn(`TickTick integration disabled. Cannot get task ${taskId}.`);
+      return null;
+    }
     try {
       const response = await this.axiosInstance.get(`/task/${taskId}`);
       return response.data;
@@ -187,6 +213,62 @@ export class TickTickAdapter implements ISyncTargetAdapter {
         'Failed to fetch TickTick task:',
         error.response?.data || error.message,
       );
+      throw error;
+    }
+  }
+
+  public async exchangeCodeForToken(code: string): Promise<void> {
+    try {
+      const clientId = process.env.TICKTICK_CLIENT_ID;
+      const clientSecret = process.env.TICKTICK_CLIENT_SECRET;
+      const redirectUri = process.env.TICKTICK_REDIRECT_URI;
+
+      if (!clientId || !clientSecret || !redirectUri) {
+        throw new Error('OAuth configuration missing');
+      }
+
+      this.logger.log('Requesting access token from TickTick API');
+      const response = await axios.post(
+        'https://ticktick.com/oauth/token',
+        new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          scope: 'tasks:write tasks:read',
+        }).toString(),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        }
+      );
+
+      const { access_token, refresh_token, expires_in } = response.data;
+      if (!access_token) {
+        throw new Error('No access token returned from TickTick');
+      }
+
+      const expiresAt = new Date(Date.now() + expires_in * 1000);
+
+      await this.prisma.integrationToken.upsert({
+        where: { provider: 'ticktick' },
+        update: {
+          access_token,
+          refresh_token,
+          expires_at: expiresAt,
+        },
+        create: {
+          provider: 'ticktick',
+          access_token,
+          refresh_token,
+          expires_at: expiresAt,
+        },
+      });
+
+      this.logger.log('Successfully saved TickTick token to Database. Re-initializing client.');
+      await this.initializeClient();
+    } catch (error) {
+      this.logger.error('Failed to exchange code for TickTick token:', error.response?.data || error.message);
       throw error;
     }
   }
