@@ -12,6 +12,7 @@ import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.in
 import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
 import { PlanningOrchestrator } from '../../core/application/orchestrators/planning.orchestrator';
 import { TelegramAdapter } from '../../infrastructure/adapters/telegram.adapter';
+import { FileLogger } from '../../infrastructure/logger/file.logger';
 
 @Update()
 export class TelegramUpdate {
@@ -72,6 +73,173 @@ export class TelegramUpdate {
     } catch (error) {
       this.logger.error('Failed to handle /list command:', error);
       await ctx.reply('❌ Произошла ошибка при получении списка задач.');
+    }
+  }
+
+  @Command('logs')
+  async onLogs(@Ctx() ctx: Context) {
+    const logs = FileLogger.getLastLogs(30);
+    const text = `📜 *Последние 30 строк логов:*\n\n\`\`\`\n${logs}\n\`\`\``;
+    try {
+      if (text.length > 4000) {
+        await ctx.replyWithMarkdown(`📜 Логи слишком длинные, обрезаю...\n\n\`\`\`\n${text.slice(-3800)}\n\`\`\``);
+      } else {
+        await ctx.replyWithMarkdown(text);
+      }
+    } catch (e) {
+      this.logger.error('Failed to send logs', e);
+      await ctx.reply('❌ Ошибка при отправке логов.');
+    }
+  }
+
+  private async sendDashboard(ctx: Context, page: number = 0) {
+    const tasks = await this.taskService.getAllTasks('active');
+    const pageSize = 7;
+    const totalPages = Math.ceil(tasks.length / pageSize) || 1;
+    const currentPage = Math.min(page, totalPages - 1);
+    const startIdx = currentPage * pageSize;
+    const pageTasks = tasks.slice(startIdx, startIdx + pageSize);
+
+    let text = `🎛 *Панель управления задачами*\n`;
+    text += `Всего активных: ${tasks.length}\n`;
+
+    if (tasks.length === 0) {
+      text += `\nУ вас нет актуальных задач! Отдыхайте ☕️`;
+      if (ctx.callbackQuery) {
+        await ctx.editMessageText(text, { parse_mode: 'Markdown' }).catch(() => {});
+      } else {
+        await ctx.replyWithMarkdown(text);
+      }
+      return;
+    }
+
+    const buttons = [];
+    for (const task of pageTasks) {
+      const priority = ['⚪','🟡','🟡','🟠','🟠','🔴'][task.priority || 0] || '⚪';
+      const shortTitle = task.title.length > 28 ? task.title.substring(0, 28) + '...' : task.title;
+      buttons.push([Markup.button.callback(`${priority} ${shortTitle}`, `task_open_${task.id}`)]);
+    }
+
+    const navRow = [];
+    if (currentPage > 0) {
+      navRow.push(Markup.button.callback('⬅️ Назад', `dash_page_${currentPage - 1}`));
+    }
+    navRow.push(Markup.button.callback(`Стр. ${currentPage + 1}/${totalPages}`, `ignore`));
+    if (currentPage < totalPages - 1) {
+      navRow.push(Markup.button.callback('Вперед ➡️', `dash_page_${currentPage + 1}`));
+    }
+    buttons.push(navRow);
+    buttons.push([Markup.button.callback('🔄 Обновить', `dash_page_${currentPage}`)]);
+
+    const keyboard = Markup.inlineKeyboard(buttons);
+
+    if (ctx.callbackQuery) {
+      try {
+        await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: keyboard.reply_markup });
+      } catch (e) {
+        // message is exactly the same, ignore Error: Bad Request: message is not modified
+      }
+    } else {
+      await ctx.replyWithMarkdown(text, keyboard);
+    }
+  }
+
+  @Command('dashboard')
+  async onDashboard(@Ctx() ctx: Context) {
+    await this.sendDashboard(ctx, 0);
+  }
+
+  @Action(/^dash_page_(\d+)$/)
+  async onDashPage(@Ctx() ctx: Context) {
+    // @ts-ignore
+    const page = parseInt(ctx.match[1], 10);
+    await ctx.answerCbQuery();
+    await this.sendDashboard(ctx, page);
+  }
+
+  @Action(/^task_open_(.+)$/)
+  async onTaskOpen(@Ctx() ctx: Context) {
+    // @ts-ignore
+    const taskId = ctx.match[1];
+    const task = await this.taskService.getTaskById(taskId);
+    
+    if (!task) {
+      await ctx.answerCbQuery('Задача не найдена или уже удалена 🗑');
+      await this.sendDashboard(ctx, 0);
+      return;
+    }
+
+    const priority = ['⚪ Никакой','🟡 Низкий','🟡 Низкий','🟠 Средний','🟠 Средний','🔴 Высокий'][task.priority || 0] || '⚪ Никакой';
+    const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('ru-RU') : 'Нет дедлайна';
+    
+    let text = `📋 *${task.title}*\n\n`;
+    text += `🔥 Приоритет: ${priority}\n`;
+    text += `🗓 Дедлайн: ${dueDate}\n`;
+    if (task.estimated_minutes) text += `⏱ Оценка: ${task.estimated_minutes} мин\n`;
+    if (task.tags && task.tags.length > 0) text += `🏷 Теги: ${task.tags.map(t => '#' + t).join(' ')}\n`;
+    
+    const buttons = [
+      [Markup.button.callback('✅ Выполнить', `task_done_${task.id}`)],
+      [Markup.button.callback('🕒 Перенести на завтра', `task_postpone1_${task.id}`)],
+      [Markup.button.callback('🗑 Удалить / Отменить', `task_del_${task.id}`)],
+      [Markup.button.callback('🔙 Назад к списку', `dash_page_0`)]
+    ];
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(text, { 
+      parse_mode: 'Markdown', 
+      reply_markup: Markup.inlineKeyboard(buttons).reply_markup 
+    }).catch(() => {});
+  }
+
+  @Action(/^task_done_(.+)$/)
+  async onTaskDone(@Ctx() ctx: Context) {
+    // @ts-ignore
+    const taskId = ctx.match[1];
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    await ctx.answerCbQuery('Идет закрытие...');
+    await ctx.editMessageReplyMarkup(undefined);
+
+    const task = await this.taskService.getTaskById(taskId);
+    if (task) {
+      await this.telegramService.completeSingleTask(chatId, task);
+      await this.sendDashboard(ctx, 0);
+    }
+  }
+
+  @Action(/^task_postpone1_(.+)$/)
+  async onTaskPostpone1(@Ctx() ctx: Context) {
+    // @ts-ignore
+    const taskId = ctx.match[1];
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    await ctx.answerCbQuery('Переносим на завтра...');
+    await ctx.editMessageReplyMarkup(undefined);
+
+    const task = await this.taskService.getTaskById(taskId);
+    if (task) {
+      await this.telegramService.postponeSingleTask(chatId, task);
+      await this.sendDashboard(ctx, 0);
+    }
+  }
+
+  @Action(/^task_del_(.+)$/)
+  async onTaskDel(@Ctx() ctx: Context) {
+    // @ts-ignore
+    const taskId = ctx.match[1];
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    await ctx.answerCbQuery('Удаляем задачу...');
+    await ctx.editMessageReplyMarkup(undefined);
+
+    const task = await this.taskService.getTaskById(taskId);
+    if (task) {
+      await this.telegramService.deleteSingleTask(chatId, task);
+      await this.sendDashboard(ctx, 0);
     }
   }
 

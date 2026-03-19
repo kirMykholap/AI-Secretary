@@ -179,6 +179,49 @@ export class TelegramAdapter implements IMessagingAdapter {
     }
   }
 
+  /**
+   * Complete single task and sync
+   */
+  async completeSingleTask(chatId: number, task: any) {
+    try {
+      await this.taskService.updateTask(task.id, { status: 'completed' });
+
+      if (task.ticktick_id) {
+        await this.tickTickService.updateTask(task.ticktick_id, { status: 2 });
+        this.logger.log(`Completed in TickTick: ${task.ticktick_id}`);
+      }
+
+      if (task.jira_key) {
+        await this.jiraAdapter.transitionToDone(task.jira_key);
+        this.logger.log(`Completed in Jira: ${task.jira_key}`);
+      }
+
+      await this.sendMessage(chatId, `✅ Красавчик! Задача *${task.title}* закрыта везде.`);
+    } catch (error) {
+      this.logger.error('Failed to complete task:', error);
+      await this.sendMessage(chatId, '❌ Ошибка при закрытии задачи.');
+    }
+  }
+
+  /**
+   * Delete/Cancel single task and sync
+   */
+  async deleteSingleTask(chatId: number, task: any) {
+    try {
+      await this.taskService.deleteTask(task.id);
+
+      if (task.jira_key) {
+        await this.jiraAdapter.transitionToCancelled(task.jira_key);
+        this.logger.log(`Cancelled in Jira: ${task.jira_key}`);
+      }
+
+      await this.sendMessage(chatId, `🗑 Задача *${task.title}* отменена.`);
+    } catch (error) {
+      this.logger.error('Failed to delete task:', error);
+      await this.sendMessage(chatId, '❌ Ошибка при отмене задачи.');
+    }
+  }
+
   private formatTickTickDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

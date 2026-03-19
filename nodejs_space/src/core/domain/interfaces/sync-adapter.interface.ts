@@ -10,4 +10,6 @@ export interface ISyncSourceAdapter {
     getTaskById(id: string): Promise<any>;
     getAssignedTasks(): Promise<any[]>;
     updateDueDate(id: string, dueDate: Date): Promise<void>;
+    transitionToDone(id: string): Promise<boolean>;
+    transitionToCancelled(id: string): Promise<boolean>;
 }

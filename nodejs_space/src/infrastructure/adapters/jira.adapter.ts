@@ -122,4 +122,39 @@ export class JiraAdapter implements ISyncSourceAdapter {
       throw error;
     }
   }
+
+  private async performTransition(jiraKey: string, possibleNames: string[]): Promise<boolean> {
+    if (!this.axiosInstance) return false;
+    try {
+      const response = await this.axiosInstance.get(`/issue/${jiraKey}/transitions`);
+      const transitions = response.data.transitions || [];
+      const match = transitions.find((t: any) => 
+        possibleNames.some(name => t.name.toLowerCase().includes(name.toLowerCase()))
+      );
+
+      if (!match) {
+        this.logger.warn(`No matching transition found for ${jiraKey} among: ${possibleNames.join(', ')}`);
+        // Fallback: just use the last transition natively available usually representing "Done"
+        const lastResort = transitions[transitions.length - 1];
+        if (!lastResort) return false;
+        await this.axiosInstance.post(`/issue/${jiraKey}/transitions`, { transition: { id: lastResort.id } });
+        return true;
+      }
+
+      await this.axiosInstance.post(`/issue/${jiraKey}/transitions`, { transition: { id: match.id } });
+      this.logger.log(`Transitioned ${jiraKey} using workflow: ${match.name}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to transition Jira task ${jiraKey}:`, error.message);
+      return false;
+    }
+  }
+
+  async transitionToDone(jiraKey: string): Promise<boolean> {
+    return this.performTransition(jiraKey, ['done', 'выполнено', 'решено', 'closed', 'закрыто', 'готово']);
+  }
+
+  async transitionToCancelled(jiraKey: string): Promise<boolean> {
+    return this.performTransition(jiraKey, ['cancel', 'отменен', "won't do", 'отклонен', 'discard']);
+  }
 }
