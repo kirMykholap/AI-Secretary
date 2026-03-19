@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { TASK_REPOSITORY } from '../../domain/interfaces/task-repository.interface';
 import type { ITaskRepository } from '../../domain/interfaces/task-repository.interface';
 import { MESSAGING_ADAPTER } from '../../domain/interfaces/messaging-adapter.interface';
@@ -13,7 +14,14 @@ import type { IIntelligenceAdapter } from '../../domain/interfaces/intelligence-
 @Injectable()
 export class PlanningOrchestrator {
   private readonly logger = new Logger(PlanningOrchestrator.name);
-  private readonly targetChatId = 337519310; // Your Telegram chat ID
+  private get targetChatId(): number {
+    const chatId = this.configService.get<string>('TELEGRAM_CHAT_ID');
+    if (!chatId) {
+      this.logger.warn('TELEGRAM_CHAT_ID is not set in environment variables!');
+      return 0;
+    }
+    return parseInt(chatId, 10);
+  }
 
   constructor(
     @Inject(TASK_REPOSITORY) private readonly taskService: ITaskRepository,
@@ -21,7 +29,17 @@ export class PlanningOrchestrator {
     @Inject(INTELLIGENCE_ADAPTER) private readonly llmService: IIntelligenceAdapter,
     @Inject(TICKTICK_ADAPTER) private readonly tickTickService: ISyncTargetAdapter,
     @Inject(JIRA_ADAPTER) private readonly jiraAdapter: ISyncSourceAdapter,
+    private readonly configService: ConfigService,
   ) { }
+
+  /**
+   * Initiates morning planning manually or via cron
+   */
+  async initiateMorningPlanning() {
+    const chatId = this.targetChatId;
+    if (!chatId) return;
+    await this.telegramService.sendCapacitySelection(chatId);
+  }
 
   /**
    * Process morning plan after user selects capacity

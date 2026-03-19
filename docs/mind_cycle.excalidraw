@@ -6,7 +6,7 @@
     {
       "type": "text",
       "id": "title",
-      "x": 300,
+      "x": 315.58992267398355,
       "y": 50,
       "width": 639.84375,
       "height": 40,
@@ -25,8 +25,8 @@
       "opacity": 100,
       "angle": 0,
       "seed": 111,
-      "version": 3,
-      "versionNonce": 1804918328,
+      "version": 134,
+      "versionNonce": 1820647884,
       "isDeleted": false,
       "groupIds": [],
       "boundElements": [],
@@ -35,7 +35,7 @@
       "index": "a0",
       "frameId": null,
       "roundness": null,
-      "updated": 1772551920121,
+      "updated": 1773340454404,
       "containerId": null,
       "autoResize": true,
       "lineHeight": 1.4285714285714286
