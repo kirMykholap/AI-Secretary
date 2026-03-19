@@ -22,6 +22,10 @@ export class LlmAdapter implements IIntelligenceAdapter {
     }
   }
 
+  private getModel(): string {
+    return process.env.LLM_MODEL || 'gpt-4o-mini';
+  }
+
   /**
    * Estimate time to complete a task in minutes
    */
@@ -36,7 +40,7 @@ export class LlmAdapter implements IIntelligenceAdapter {
 Описание: ${description || 'не указано'}`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.getModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
       });
@@ -97,7 +101,7 @@ ${postponedTasks.map((t) => `- ${t.title}: ${t.reason}`).join('\n')}
 Не повторяй полностью список задач, сделай краткую выжимку.`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.getModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       });
@@ -137,7 +141,7 @@ ${postponedTasks.map((t) => `- ${t.title}: ${t.reason}`).join('\n')}
 Верни краткую причину переноса (до 50 символов).`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.getModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 50,
@@ -172,7 +176,7 @@ ${postponedTasks.map((t) => `- ${t.title}: ${t.reason}`).join('\n')}
 Напиши короткое (1-2 предложения) напоминание с эмодзи.`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.getModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.8,
         max_tokens: 100,
@@ -206,7 +210,7 @@ ${postponedTasks.map((t) => `- ${t.title}: ${t.reason}`).join('\n')}
 Предложи что делать: разбить на подзадачи или закрыть как неактуальную. Ответ должен быть кратким (2-3 предложения) и мотивирующим.`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.getModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 150,
