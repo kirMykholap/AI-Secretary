@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
 import { TaskEntity } from '../../core/domain/entities/task.entity';
+import { PrismaService } from '../../prisma.service';
 
 export interface CreateTaskDto {
   source: string;
@@ -38,11 +38,8 @@ export interface UpdateTaskDto {
 @Injectable()
 export class TaskRepository implements ITaskRepository {
   private readonly logger = new Logger(TaskRepository.name);
-  private prisma: PrismaClient;
 
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Get all active tasks

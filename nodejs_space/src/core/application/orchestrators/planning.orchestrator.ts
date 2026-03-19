@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { formatTickTickDate } from '../../../infrastructure/utils/date.utils';
 import { TASK_REPOSITORY } from '../../domain/interfaces/task-repository.interface';
 import type { ITaskRepository } from '../../domain/interfaces/task-repository.interface';
 import { MESSAGING_ADAPTER } from '../../domain/interfaces/messaging-adapter.interface';
@@ -136,7 +137,7 @@ export class PlanningOrchestrator {
             // Update in TickTick if synced
             if (task.ticktick_id) {
               await this.tickTickService.updateTask(task.ticktick_id, {
-                dueDate: this.formatTickTickDate(newDueDate),
+                dueDate: formatTickTickDate(newDueDate),
               });
             }
 
@@ -325,7 +326,7 @@ export class PlanningOrchestrator {
           // Update in TickTick if synced
           if (task.ticktick_id) {
             await this.tickTickService.updateTask(task.ticktick_id, {
-              dueDate: this.formatTickTickDate(newDueDate),
+              dueDate: formatTickTickDate(newDueDate),
             });
           }
 
@@ -360,14 +361,6 @@ export class PlanningOrchestrator {
     }
   }
 
-  /**
-   * Format date for TickTick API (23:59:00 in Kyiv timezone)
-   */
-  private formatTickTickDate(date: Date): string {
-    const kyivDate = new Date(date);
-    kyivDate.setHours(23, 59, 0, 0);
-    return kyivDate.toISOString().slice(0, 19) + '+0200';
-  }
 
   /**
    * Sleep helper

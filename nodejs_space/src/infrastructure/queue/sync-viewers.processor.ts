@@ -1,6 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { formatTickTickDate } from '../utils/date.utils';
 import { TICKTICK_ADAPTER } from '../../core/domain/interfaces/sync-adapter.interface';
 import type { ISyncTargetAdapter } from '../../core/domain/interfaces/sync-adapter.interface';
 import { MESSAGING_ADAPTER } from '../../core/domain/interfaces/messaging-adapter.interface';
@@ -11,22 +13,16 @@ import type { ITaskRepository } from '../../core/domain/interfaces/task-reposito
 @Processor('sync-viewers-queue')
 export class SyncViewersProcessor extends WorkerHost {
     private readonly logger = new Logger(SyncViewersProcessor.name);
-    private readonly targetChatId = 337519310;
+    private readonly targetChatId: number;
 
     constructor(
         @Inject(TICKTICK_ADAPTER) private tickTickAdapter: ISyncTargetAdapter,
         @Inject(MESSAGING_ADAPTER) private messagingAdapter: IMessagingAdapter,
         @Inject(TASK_REPOSITORY) private taskRepository: ITaskRepository,
+        private readonly configService: ConfigService,
     ) {
         super();
-    }
-
-    private formatTickTickDate(date: Date): string {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}T23:59:00+0200`;
+        this.targetChatId = this.configService.getOrThrow<number>('TELEGRAM_CHAT_ID');
     }
 
     async process(job: Job<any, any, string>): Promise<any> {
@@ -39,7 +35,7 @@ export class SyncViewersProcessor extends WorkerHost {
                     title,
                     content: description,
                     priority,
-                    dueDate: this.formatTickTickDate(dueDate),
+                    dueDate: formatTickTickDate(dueDate),
                     tags: ['jira'],
                 });
             } else {
@@ -47,7 +43,7 @@ export class SyncViewersProcessor extends WorkerHost {
                     title,
                     content: description,
                     priority,
-                    dueDate: this.formatTickTickDate(dueDate),
+                    dueDate: formatTickTickDate(dueDate),
                     tags: ['jira'],
                 });
                 await this.taskRepository.updateTask(taskId, {
