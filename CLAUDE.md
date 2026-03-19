@@ -15,7 +15,7 @@
 **Используй placeholder'ы:**
 ```
 JIRA_API_TOKEN='<YOUR_JIRA_API_TOKEN>'
-JIRA_EMAIL='<YOUR_EMAIL>@gmail.com'
+JIRA_EMAIL='<YOUR_EMAIL>'
 TELEGRAM_CHAT_ID='<YOUR_TELEGRAM_CHAT_ID>'
 ```
 
