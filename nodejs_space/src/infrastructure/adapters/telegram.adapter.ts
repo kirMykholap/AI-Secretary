@@ -102,6 +102,9 @@ export class TelegramAdapter implements IMessagingAdapter {
   /**
    * Send frequently postponed task message
    */
+  /**
+   * Send frequently postponed task message
+   */
   async sendFrequentlyPostponedTaskMessage(
     chatId: number,
     taskId: string,
@@ -112,34 +115,10 @@ export class TelegramAdapter implements IMessagingAdapter {
     const text = `⚠️ *Задача переносится уже ${postponedCount} раз!*\n\n*Задача:* ${taskTitle}\n\n${suggestion}\n\nЧто делаем?`;
     const buttons = [
       [
-        {
-          text: '🗑 Закрыть как неактуальную',
-          callback_data: `delete_${taskId}`,
-        },
-        { text: '✂️ Разбить на подзадачи', callback_data: `split_${taskId}` },
+        { text: '✅ Завершил!', callback_data: `task_done_${taskId}` },
+        { text: '🗑 Отменить везде', callback_data: `task_del_${taskId}` },
       ],
-      [{ text: '📅 Ещё раз перенести', callback_data: `postpone_${taskId}` }],
-    ];
-    await this.sendMessageWithButtons(chatId, text, buttons);
-  }
-
-  /**
-   * Send Jira deletion confirmation message
-   */
-  async sendJiraDeletionConfirmation(
-    chatId: number,
-    taskId: string,
-    jiraKey: string,
-  ) {
-    const text = `Задача *${jiraKey}* закрыта локально.\n\nЗакрыть её также в Jira?`;
-    const buttons = [
-      [
-        {
-          text: '✅ Да, закрыть в Jira',
-          callback_data: `close_jira_${taskId}`,
-        },
-        { text: '❌ Нет', callback_data: `skip_jira_${taskId}` },
-      ],
+      [{ text: '📅 Снова на завтра (эх...)', callback_data: `task_postpone1_${taskId}` }],
     ];
     await this.sendMessageWithButtons(chatId, text, buttons);
   }
