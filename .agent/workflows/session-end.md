@@ -23,7 +23,8 @@ When the USER requests to "finish the session" or "save progress", you must exec
     `grep -rE "185\.[0-9]{1,3}|[a-zA-Z0-9.-]*@gmail\.com|kir-[a-zA-Z0-9-]*\.atlassian\.net" . --exclude-dir node_modules --exclude-dir .git`
     If ANY matches are found, you MUST replace them with placeholders (e.g., `<YOUR_IP>`, `<YOUR_EMAIL>`) before proceeding!
 
-6.  **Commit the History**
-    Commit these documentation files to git so they are permanently tracked:
-    `git add docs/sessions/{VERSION}`
-    `git commit -m "docs: archive session {VERSION} progress"`
+6.  **Commit and Push All Changes**
+    Commit ALL files (including source code changes, new artifacts, and the history docs) to git so they are perfectly aligned. The commit message MUST BE the version number. Finally, push to the remote repository:
+    `git add .`
+    `git commit -m "{VERSION}"`
+    `git push`
