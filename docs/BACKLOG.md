@@ -7,6 +7,12 @@ AI Agents must consult this document at the start of new sessions and append ide
 - **Multi-user Support (Multi-tenancy):** Allow multiple Telegram users to have their own AI Secretary instances. Store `TickTickToken` and `JiraToken` in the DB linked to a specific `TelegramUserID`.
 
 ### Core Improvements
+- **Security Scanning (CI/CD):** Интеграция Snyk (или аналога) в GitHub Actions для проверки уязвимостей перед деплоем.
+- **Morning Question Rework:** Привязка времени ответа пользователя (для трекинга сна), изменение формулировки, добавление кнопки "Сегодня выходной".
+- **Telegram Bot Menu:** Добавить кнопку "Меню" со списком всех команд в ТГ-боте.
+- **Critical Server Events Alerts:** Отправка важных системных сообщений (например, падение процессов) напрямую в ТГ-бота.
+- **Global Task Sync:** Периодическая (раз в день / при старте) полная синхронизация задач из Jira с БД (БД - источник правды).
+- **Motivation & Obsidian:** Внедрение системы мотивации и интеграция с Obsidian.
 - **Telegram Mini App / Native Dashboard:** Build a powerful UI inside Telegram to manage tasks (complete, postpone, prioritize, delete) and view server logs. Telegram will act as the primary controller for Jira.
 - **TickTick Deprecation:** Keep TickTick as a read-only visual widget for now. Do NOT add two-way sync to it. In the future, replace it with a custom personal widget.
 - **Task deletion:** Handle deleted tasks in Jira
@@ -32,7 +38,12 @@ AI Agents must consult this document at the start of new sessions and append ide
 - **Multi-user Support (Multi-tenancy):** Allow multiple Telegram users to have their own AI Secretary instances. Store `TickTickToken` and `JiraToken` in the DB linked to a specific `TelegramUserID`.
 
 ## 🛠 Technical Debt & Refactoring
-- 
+- **Daily/Evening Check Bug:** Утренний чек находит задачу (напр. HOME-18), а вечерний говорит, что всё закрыто.
+- **Ghost Task Bug:** Периодически всплывает задача "Новый тест" в дневном плане.
+- **Jira -> TG Sync Bug & Freeze:** Добавление задачи в Джире не отправляет сообщение в ТГ. Зависает процесс. Также проверить закрытие задачи в Jira при закрытии через ТГ.
+- **TickTick Reschedule Bug:** Перенос задачи в ТГ переносит её в Jira, но НЕ в TickTick.
+- **Text adjustments:** Небольшие правки текстов сообщений бота.
+- **Command Bug:** Команда `/logs` в Telegram не работает.
 
 ## 💡 AI Secretary Best Practices
 ### Programming & Architecture
