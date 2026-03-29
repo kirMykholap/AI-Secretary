@@ -4,6 +4,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { FileLogger } from './infrastructure/logger/file.logger';
+import { TelegramAdapter } from './infrastructure/adapters/telegram.adapter';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const fileLogger = new FileLogger();
@@ -64,6 +66,35 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
+
+  // --- CRITICAL ALERTS TO TELEGRAM ---
+  const telegramService = app.get(TelegramAdapter);
+  const configService = app.get(ConfigService);
+  const adminId = configService.get<string>('TELEGRAM_CHAT_ID');
+
+  const sendCrashAlert = async (type: string, error: any) => {
+    logger.error(`[${type}] ${error?.message || error}`, error?.stack || '');
+    if (adminId) {
+      try {
+        await telegramService.sendMessage(
+          parseInt(adminId, 10),
+          `🚨 *CRITICAL SERVER CRASH (${type})*\n\n🔥 *Процесс node.js упал!* Бот уходит в рестарт.\n❗️ *Ошибка:* ${error?.message || error}`,
+          'Markdown'
+        );
+      } catch (e) {
+        logger.error('Failed to send crash alert to Telegram', e);
+      }
+    }
+  };
+
+  process.on('uncaughtException', async (error) => {
+    await sendCrashAlert('UncaughtException', error);
+  });
+
+  process.on('unhandledRejection', async (reason) => {
+    await sendCrashAlert('UnhandledRejection', reason);
+  });
+  // -----------------------------------
 
   logger.log(`Application is running on port ${port}`);
   logger.log(

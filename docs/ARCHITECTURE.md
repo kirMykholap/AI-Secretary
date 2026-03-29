@@ -12,7 +12,7 @@ As of **v3.0**, the project utilizes a **Hexagonal Architecture (Ports & Adapter
 - **Database:** PostgreSQL with Prisma ORM
 - **Message Broker:** Redis / BullMQ (for background jobs)
 - **Event Bus:** @nestjs/event-emitter (for internal domain events)
-- **LLM:** gpt-4o-mini via RouteLLM (Abacus AI)
+- **LLM:** OpenAI compatible endpoint via RouteLLM (Abacus AI) using `gpt-4o-mini` (or `chatgpt-4o-latest`)
 - **Task Manager:** TickTick (Official OAuth API)
 - **Issue Tracker:** Jira (REST API v3)
 - **Messaging:** Telegram Bot API (`nestjs-telegraf`)
