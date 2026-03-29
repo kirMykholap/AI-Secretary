@@ -4,6 +4,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { BullModule } from '@nestjs/bullmq';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './infrastructure/filters/all-exceptions.filter';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -85,6 +87,12 @@ import { INTELLIGENCE_ADAPTER } from './core/domain/interfaces/intelligence-adap
   providers: [
     AppService,
     PrismaService,
+
+    // Global Exception Filter
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
 
     // Adapters mapping
     {

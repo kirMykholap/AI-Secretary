@@ -70,7 +70,7 @@ export class TelegramAdapter implements IMessagingAdapter {
       [
         { text: '💪 100% — 6 часов', callback_data: 'capacity_360' },
         { text: '😐 60% — ~3.5 часа', callback_data: 'capacity_216' },
-        { text: '😴 30% — ~2 часа', callback_data: 'capacity_108' },
+        { text: '🌴 Сегодня выходной', callback_data: 'capacity_0' },
       ],
     ];
     await this.sendMessageWithButtons(chatId, text, buttons);
@@ -118,7 +118,7 @@ export class TelegramAdapter implements IMessagingAdapter {
         { text: '✅ Завершил!', callback_data: `task_done_${taskId}` },
         { text: '🗑 Отменить везде', callback_data: `task_del_${taskId}` },
       ],
-      [{ text: '📅 Снова на завтра (эх...)', callback_data: `task_postpone1_${taskId}` }],
+      [{ text: '📅 Снова на завтра', callback_data: `task_postpone1_${taskId}` }],
     ];
     await this.sendMessageWithButtons(chatId, text, buttons);
   }

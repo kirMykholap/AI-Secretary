@@ -139,6 +139,15 @@ model Task {
 
 ## Environment Variables
 
+> [!IMPORTANT]
+> **Локальный файл `.env` используется только для песочницы/разработки!**
+> В Production-окружении (на VPS) переменные среды не тянутся из локального `.env`. Все ключи хранятся в **GitHub Secrets**. При деплое (через GitHub Actions `.github/workflows/deploy.yml`) из этих секретов "на лету" собирается `.env` файл прямо на сервере. Не хардкодьте секреты в код и не рассчитывайте на залив `.env` через Git.
+
+### Webhooks & Routing (Caddy)
+> [!IMPORTANT]
+> **Маршрутизация Webhook-ов.** Caddy-сервер (reverse proxy) настроен строго на значение секрета `DOMAIN_NAME`. Это значит, что все внешние интеграции (например, вебхуки из Jira или TickTick) **обязаны** стучаться именно по этому доменному имени (и строго по HTTPS). 
+> Прямые запросы по IP-адресу сервера будут отброшены веб-сервером с ошибкой сертификата (SSL protocol error / 308 Permanent Redirect).
+
 ### Required
 ```bash
 # Database
@@ -147,8 +156,8 @@ REDIS_HOST="localhost"
 REDIS_PORT=6379
 
 # Integrations
-JIRA_DOMAIN="kir-home-test.atlassian.net"
-JIRA_EMAIL="kir.mykholap@gmail.com"
+JIRA_DOMAIN="..."
+JIRA_EMAIL="..."
 JIRA_API_TOKEN="..." 
 JIRA_ACCOUNT_ID="..."
 TICKTICK_ACCESS_TOKEN="..."

@@ -62,8 +62,8 @@ jobs:
           docker compose pull || true
           docker compose up -d --build
           
-          # Run database migrations headless
-          docker compose exec -T app yarn prisma migrate deploy
+          # Run database migrations headless (auto-sync schema)
+          docker compose exec -T app yarn prisma db push --accept-data-loss
           
           # Clean up old images to save space
           docker system prune -f

@@ -47,10 +47,11 @@ AI Agents must consult this document at the start of new sessions and append ide
 
 ## 💡 AI Secretary Best Practices
 ### Programming & Architecture
-1. Keep services focused (Single Responsibility).
-2. Database is the Single Source of Truth; TickTick and Jira are reflections. Always execute DB first.
-3. Don't use infinite loops (`while(true)`). Always rely on external CRON via endpoints.
-4. Always use Timezone `Europe/Kiev` (UTC+2). Due dates in TickTick should be `23:59:00`.
+1. **Тестовые Среды (Песочницы).** До момента реализации полноценного CI/CD пайплайна с разделением Dev/Prod, текущий деплой-сервер (VPS) считается "песочницей". В будущем необходимо создать отдельного бота и отдельную БД для честного Staging/Dev окружения.
+2. Keep services focused (Single Responsibility).
+3. Database is the Single Source of Truth; TickTick and Jira are reflections. Always execute DB first.
+4. Don't use infinite loops (`while(true)`). Always rely on external CRON via endpoints.
+5. Always use Timezone `Europe/Kiev` (UTC+2). Due dates in TickTick should be `23:59:00`.
 
 ### UI / Telegram
 1. Remove inline keyboards after button click to prevent double-clicks.
