@@ -183,7 +183,11 @@ export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
       this.logger.log(`Updating task in TickTick: ${taskId}`);
       this.logger.debug(`Update payload: ${JSON.stringify(task)}`);
 
-      const response = await this.axiosInstance.post(`/task/${taskId}`, task);
+      // TickTick requires the full task object for updates. Fetch it first.
+      const existingTaskResponse = await this.axiosInstance.get(`/task/${taskId}`);
+      const fullTask = { ...existingTaskResponse.data, ...task };
+
+      const response = await this.axiosInstance.post(`/task/${taskId}`, fullTask);
 
       this.logger.log(`Updated task: ${taskId}`);
       this.logger.debug(`Response: ${JSON.stringify(response.data)}`);

@@ -50,16 +50,16 @@ export class WebhookController {
           assigneeAccountId === targetAccountId;
 
         if (shouldProcess) {
-          this.logger.log(
-            `Processing Jira issue ${issue.key}${assigneeAccountId ? ' assigned to account ' + assigneeAccountId : ' (assignee pending)'}`,
-          );
+          this.logger.log(`Processing Jira issue ${issue.key} asynchronously`);
 
-          // Trigger sync for this specific issue
-          await this.taskSyncOrchestrator.syncSingleJiraTask(issue.key);
+          // Background processing to avoid webhook timeout and API freeze
+          this.taskSyncOrchestrator.syncSingleJiraTask(issue.key).catch(error => {
+              this.logger.error(`Background sync failed for ${issue.key}:`, error);
+          });
 
           return {
             success: true,
-            message: `Задача ${issue.key} синхронизирована успешно`,
+            message: `Задача ${issue.key} принята в обработку асинхронно`,
             taskKey: issue.key,
           };
         } else {

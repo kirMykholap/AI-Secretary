@@ -52,6 +52,20 @@ export class PlanningOrchestrator {
     );
 
     try {
+      // Save analytics checkin
+      await this.taskService.saveDailyCheckin(String(chatId), capacityMinutes, capacityMinutes === 0);
+
+      // Early exit if Day Off is selected
+      if (capacityMinutes === 0) {
+        this.logger.log('Day off selected. Postponing all tasks to tomorrow.');
+        await this.postponeAllIncompleteTasks(chatId);
+        await this.telegramService.sendMessage(
+          chatId,
+          '🌴 *Принято!* Отдыхай. Я автоматически перенес все открытые на сегодня задачи на завтра. Хорошего дня!'
+        );
+        return;
+      }
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
@@ -218,9 +232,13 @@ export class PlanningOrchestrator {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Get all active tasks due today
-      const incompleteTasks =
-        await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
+      // Get all active tasks due today & overdue
+      const todayTasks = await this.taskService.getActiveTasksByDueDateRange(today, tomorrow);
+      const overdueTasks = await this.taskService.getOverdueTasks(today);
+      const activeOverdueTasks = overdueTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.status !== 'deleted');
+      
+      const allIncomplete = [...todayTasks, ...activeOverdueTasks];
+      const incompleteTasks = Array.from(new Map(allIncomplete.map(t => [t.id, t])).values());
 
       if (incompleteTasks.length === 0) {
         await this.telegramService.sendMessage(

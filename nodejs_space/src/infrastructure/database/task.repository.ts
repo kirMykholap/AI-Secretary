@@ -336,4 +336,22 @@ export class TaskRepository implements ITaskRepository {
       throw error;
     }
   }
+
+  /**
+   * Save Daily Checkin
+   */
+  async saveDailyCheckin(userId: string, capacityMin: number, isDayOff: boolean): Promise<void> {
+    try {
+      await this.prisma.dailyCheckin.create({
+        data: {
+          user_id: userId,
+          capacity_min: capacityMin,
+          is_day_off: isDayOff
+        }
+      });
+      this.logger.log(`Saved daily checkin for user ${userId}: capacity ${capacityMin} min, day off: ${isDayOff}`);
+    } catch (error) {
+      this.logger.error('Failed to save daily checkin:', error);
+    }
+  }
 }

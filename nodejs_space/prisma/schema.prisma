@@ -69,3 +69,14 @@ model IntegrationToken {
 
   @@map("integration_tokens")
 }
+
+// Analytics and Checkins
+model DailyCheckin {
+  id           String   @id @default(uuid())
+  user_id      String   @db.VarChar(255) // E.g., Telegram Chat ID
+  capacity_min Int      // e.g. 360, 216, 0 (day off)
+  is_day_off   Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  @@map("daily_checkins")
+}

@@ -11,6 +11,7 @@ import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.interface';
 import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
 import { PlanningOrchestrator } from '../../core/application/orchestrators/planning.orchestrator';
+import { TaskSyncOrchestrator } from '../../core/application/orchestrators/task-sync.orchestrator';
 import { TelegramAdapter } from '../../infrastructure/adapters/telegram.adapter';
 import { FileLogger } from '../../infrastructure/logger/file.logger';
 
@@ -24,12 +25,27 @@ export class TelegramUpdate {
     @Inject(forwardRef(() => PlanningOrchestrator))
     private readonly schedulerService: PlanningOrchestrator,
     private readonly telegramService: TelegramAdapter,
+    @Inject(forwardRef(() => TaskSyncOrchestrator))
+    private readonly syncOrchestrator: TaskSyncOrchestrator,
   ) { }
 
   @Start()
   async onStart(@Ctx() ctx: Context) {
     const welcomeMessage = `👋 *Добро пожаловать в AI Task Secretary 2.0!*\n\nЯ ваш умный помощник для управления задачами из Jira и TickTick.\n\n*📋 Доступные команды:*\n/start - показать это сообщение\n/list - все активные задачи\n/today - план на сегодня с оценкой времени\n/postponed - задачи, которые откладывались\n\n*🤖 Автоматические функции:*\n🌅 *10:00* - утреннее планирование дня\n🌙 *21:00* - вечерний чекап незакрытых задач\n🔄 Синхронизация Jira ↔️ TickTick в реальном времени\n\nГотов помочь вам быть более продуктивным! 🚀`;
     await ctx.replyWithMarkdown(welcomeMessage);
+
+    // Устанавливаем системное меню команд:
+    try {
+      await ctx.telegram.setMyCommands([
+        { command: 'dashboard', description: '🎛 Панель управления' },
+        { command: 'today', description: '🌅 План на сегодня' },
+        { command: 'list', description: '📋 Все активные задачи' },
+        { command: 'postponed', description: '📤 Отложенные задачи' },
+        { command: 'logs', description: '📜 Посмотреть логи сервера' }
+      ]);
+    } catch (e) {
+      this.logger.error('Failed to set telegram commands menu:', e);
+    }
   }
 
   @Command('list')
@@ -89,6 +105,42 @@ export class TelegramUpdate {
     } catch (e) {
       this.logger.error('Failed to send logs', e);
       await ctx.reply('❌ Ошибка при отправке логов.');
+    }
+  }
+
+  // --- DEBUG COMMANDS ---
+
+  @Command('test_morning')
+  async onTestMorning(@Ctx() ctx: Context) {
+    await ctx.reply('⏳ Запускаю утреннее планирование (Test)...');
+    try {
+      await this.schedulerService.initiateMorningPlanning();
+    } catch (error) {
+      await ctx.reply(`❌ Ошибка запуска: ${error.message}`);
+    }
+  }
+
+  @Command('test_evening')
+  async onTestEvening(@Ctx() ctx: Context) {
+    await ctx.reply('⏳ Запускаю вечерний чекап (Test)...');
+    try {
+      await this.schedulerService.processEveningCheckup();
+      await ctx.reply('✅ Чекап запущен в фоне.');
+    } catch (error) {
+      await ctx.reply(`❌ Ошибка запуска: ${error.message}`);
+    }
+  }
+
+  @Command('sync_all')
+  async onSyncAll(@Ctx() ctx: Context) {
+    await ctx.reply('⏳ Запускаю принудительную синхронизацию всех старых задач из Jira...');
+    try {
+      this.syncOrchestrator.syncAllJiraTasks().catch(e => {
+        this.logger.error('Background sync_all failed:', e);
+      });
+      await ctx.reply('✅ Подтягивание задач отправлено в фоновую очередь обработки!');
+    } catch (e) {
+      await ctx.reply(`❌ Ошибка запуска синхронизации: ${e.message}`);
     }
   }
 
@@ -167,7 +219,7 @@ export class TelegramUpdate {
       return;
     }
 
-    const priority = ['⚪ Никакой','🟡 Низкий','🟡 Низкий','🟠 Средний','🟠 Средний','🔴 Высокий'][task.priority || 0] || '⚪ Никакой';
+    const priority = ['⚪ Без приоритета','🟡 Низкий','🟡 Низкий','🟠 Средний','🟠 Средний','🔴 Высокий'][task.priority || 0] || '⚪ Без приоритета';
     const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('ru-RU') : 'Нет дедлайна';
     
     let text = `📋 *${task.title}*\n\n`;

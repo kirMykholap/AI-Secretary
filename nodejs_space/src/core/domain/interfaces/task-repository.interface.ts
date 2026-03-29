@@ -13,4 +13,5 @@ export interface ITaskRepository {
     getActiveTasksByDueDateRange(start: Date, end: Date): Promise<TaskEntity[]>;
     getOverdueTasks(referenceDate: Date): Promise<TaskEntity[]>;
     getPostponedTasks(status?: string): Promise<TaskEntity[]>;
+    saveDailyCheckin(userId: string, capacityMin: number, isDayOff: boolean): Promise<void>;
 }

@@ -39,7 +39,7 @@ export class FileLogger extends ConsoleLogger {
 
   error(message: any, stack?: string, context?: string) {
     super.error(message, stack, context);
-    this.writeToFile(`ERROR [${context || ''}] ${message} ${stack ? '\\n' + stack : ''}`);
+    this.writeToFile(`ERROR [${context || ''}] ${message} ${stack ? '\n' + stack : ''}`);
   }
 
   warn(message: any, context?: string) {
@@ -66,8 +66,8 @@ export class FileLogger extends ConsoleLogger {
     
     try {
       const content = fs.readFileSync(logFilePath, 'utf8');
-      const lines = content.trim().split('\\n');
-      return lines.slice(-linesCount).join('\\n');
+      const lines = content.trim().split('\n');
+      return lines.slice(-linesCount).join('\n');
     } catch (e) {
       return 'Failed to read logs.';
     }
