@@ -28,7 +28,10 @@ jobs:
           cache-dependency-path: 'nodejs_space/yarn.lock'
 
       - name: Install dependencies
-        run: cd nodejs_space && yarn install --frozen-lockfile
+        run: |
+          corepack enable
+          cd nodejs_space
+          yarn install --immutable
 
       - name: Run Snyk checks
         uses: snyk/actions/node@master
