@@ -9,7 +9,6 @@ AI Agents must consult this document at the start of new sessions and append ide
 ### Core Improvements
 - **Security Scanning (CI/CD):** Интеграция Snyk (или аналога) в GitHub Actions для проверки уязвимостей перед деплоем.
 - **Morning Question Rework:** Привязка времени ответа пользователя (для трекинга сна), изменение формулировки, добавление кнопки "Сегодня выходной".
-- **Telegram Bot Menu:** Добавить кнопку "Меню" со списком всех команд в ТГ-боте.
 - **Critical Server Events Alerts:** Отправка важных системных сообщений (например, падение процессов) напрямую в ТГ-бота.
 - **Global Task Sync:** Периодическая (раз в день / при старте) полная синхронизация задач из Jira с БД (БД - источник правды).
 - **Motivation & Obsidian:** Внедрение системы мотивации и интеграция с Obsidian.
