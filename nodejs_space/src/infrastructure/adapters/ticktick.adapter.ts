@@ -37,6 +37,29 @@ export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
         },
       });
 
+      // Add interceptor for 401 Unauthorized to refresh token automatically
+      this.axiosInstance.interceptors.response.use(
+        (response) => response,
+        async (error) => {
+          const originalRequest = error.config;
+          if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            this.logger.log('TickTick token expired (401). Attempting refresh...');
+            try {
+              const newToken = await this.refreshToken();
+              // Update authorization header for the original request
+              originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+              // Retry the request with the new token
+              return axios(originalRequest);
+            } catch (refreshError) {
+              this.logger.error('Failed to automatically refresh TickTick token');
+              return Promise.reject(refreshError);
+            }
+          }
+          return Promise.reject(error);
+        }
+      );
+
       this.logger.log('TickTick client initialized successfully');
 
       // Initialize Jira project asynchronously
@@ -47,6 +70,60 @@ export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
       this.logger.error('Failed to initialize TickTick client:', error);
       throw error;
     }
+  }
+
+  /**
+   * Refresh the TickTick Access Token using the refresh_token
+   */
+  private async refreshToken(): Promise<string> {
+    const tokenRecord = await this.prisma.integrationToken.findUnique({
+      where: { provider: 'ticktick' },
+    });
+
+    if (!tokenRecord || !tokenRecord.refresh_token) {
+      throw new Error('No refresh token available');
+    }
+
+    const clientId = process.env.TICKTICK_CLIENT_ID;
+    const clientSecret = process.env.TICKTICK_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('OAuth configuration missing');
+    }
+
+    const response = await axios.post(
+      'https://ticktick.com/oauth/token',
+      new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: tokenRecord.refresh_token,
+        scope: 'tasks:write tasks:read',
+      }).toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }
+    );
+
+    const { access_token, refresh_token, expires_in } = response.data;
+    const expiresAt = new Date(Date.now() + (expires_in * 1000));
+
+    await this.prisma.integrationToken.update({
+      where: { provider: 'ticktick' },
+      data: {
+        access_token,
+        refresh_token,
+        expires_at: expiresAt,
+      },
+    });
+
+    // Update global axios instance headers
+    if (this.axiosInstance) {
+      this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    }
+
+    this.logger.log('TickTick Access Token successfully refreshed!');
+    return access_token;
   }
 
   /**

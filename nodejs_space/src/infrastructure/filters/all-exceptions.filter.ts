@@ -38,11 +38,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
           : 'Unknown error';
 
     // Log the error using the global FileLogger
-    this.logger.error(
-      `Unhandled Exception: ${JSON.stringify(message)}`,
-      exception instanceof Error ? exception.stack : '',
-      request?.url || 'Unknown Context'
-    );
+    if (status === HttpStatus.NOT_FOUND) {
+      this.logger.warn(`404 Not Found: ${request?.url}`);
+    } else {
+      this.logger.error(
+        `Unhandled Exception: ${JSON.stringify(message)}`,
+        exception instanceof Error ? exception.stack : '',
+        request?.url || 'Unknown Context'
+      );
+    }
 
     // If it's an internal server error, notify the admin via Telegram
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
