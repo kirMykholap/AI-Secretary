@@ -71,13 +71,17 @@ export class PlanningOrchestrator {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Get all tasks for today and overdue tasks
+      // 1. First, apply Smart Prioritization to overdue tasks
+      const overdueTasks = await this.taskService.getOverdueTasks(today);
+      await this.smartPrioritizeOverdueTasks(overdueTasks, today);
+
+      // 2. Fetch all tasks again after bumping overdue dates to today
       const todayTasks = await this.taskService.getTasksByDueDateRange(
         today,
         tomorrow,
       );
-      const overdueTasks = await this.taskService.getOverdueTasks(today);
-      const allTasks = [...todayTasks, ...overdueTasks];
+
+      const allTasks = [...todayTasks];
 
       if (allTasks.length === 0) {
         await this.telegramService.sendMessage(
@@ -148,11 +152,22 @@ export class PlanningOrchestrator {
               postponed_count: task.postponed_count + 1,
             });
 
-            // Update in TickTick if synced
+            // Update in TickTick if synced. Gracefully handle 404s.
             if (task.ticktick_id) {
-              await this.tickTickService.updateTask(task.ticktick_id, {
-                dueDate: formatTickTickDate(newDueDate),
-              });
+              try {
+                const updatedTickTick = await this.tickTickService.updateTask(task.ticktick_id, {
+                  dueDate: formatTickTickDate(newDueDate),
+                });
+                
+                // If it returns null, task was deleted in TickTick!
+                if (!updatedTickTick) {
+                  this.logger.warn(`Task ${task.id} lost its TickTick connection. Unlinking.`);
+                  await this.taskService.updateTask(task.id, { ticktick_id: null as any }); // Prisma accepts null
+                }
+              } catch (ttError) {
+                this.logger.error(`TickTick sync failed for postponed task ${task.id}:`, ttError);
+                // We IGNORE this error so the morning plan DOES NOT CRASH
+              }
             }
 
             currentLoad -= task.estimated_minutes || 0;
@@ -343,14 +358,26 @@ export class PlanningOrchestrator {
 
           // Update in TickTick if synced
           if (task.ticktick_id) {
-            await this.tickTickService.updateTask(task.ticktick_id, {
-              dueDate: formatTickTickDate(newDueDate),
-            });
+            try {
+              const updatedTickTick = await this.tickTickService.updateTask(task.ticktick_id, {
+                dueDate: formatTickTickDate(newDueDate),
+              });
+              if (!updatedTickTick) {
+                this.logger.warn(`Task ${task.id} lost its TickTick connection. Unlinking.`);
+                await this.taskService.updateTask(task.id, { ticktick_id: null as any });
+              }
+            } catch (ttError) {
+              this.logger.error(`TickTick sync failed during evening postpone: ${task.id}`, ttError);
+            }
           }
 
           // Update in Jira if synced
           if (task.jira_key) {
-            await this.jiraAdapter.updateDueDate(task.jira_key, newDueDate);
+            try {
+              await this.jiraAdapter.updateDueDate(task.jira_key, newDueDate);
+            } catch (jiraError) {
+              this.logger.error(`Jira sync failed during evening postpone: ${task.jira_key}`, jiraError);
+            }
           }
 
           successCount++;
@@ -398,6 +425,56 @@ export class PlanningOrchestrator {
     const hours = Math.floor(capacityMinutes / 60);
     const minutes = capacityMinutes % 60;
     return hours > 0 ? `${hours}ч ${minutes}мин` : `${minutes}мин`;
+  }
+
+  /**
+   * Smart Prioritization logic for overdue tasks
+   */
+  private async smartPrioritizeOverdueTasks(overdueTasks: any[], today: Date): Promise<void> {
+    if (overdueTasks.length === 0) return;
+    this.logger.log(`Running Smart Prioritization on ${overdueTasks.length} overdue tasks...`);
+
+    for (const task of overdueTasks) {
+      if (!task.due_date) continue; // Skip tasks without dates (shouldn't happen in overdue)
+      
+      const taskDate = new Date(task.due_date);
+      const timeDiff = today.getTime() - taskDate.getTime();
+      const daysOverdue = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      
+      if (daysOverdue <= 0) continue; // Not actually overdue?
+
+      let newPriority = task.priority;
+      
+      if (daysOverdue >= 3) {
+        newPriority = 5; // MAX PRIORITY
+        this.logger.log(`Task ${task.id} is overdue by ${daysOverdue} days. Bumping to MAX priority (5).`);
+      } else if (daysOverdue >= 1) {
+        newPriority = Math.min(5, task.priority + 1); // +1 PRIORITY
+        this.logger.log(`Task ${task.id} is overdue by ${daysOverdue} days. Bumping priority from ${task.priority} to ${newPriority}.`);
+      }
+
+      // We explicitly DO NOT update Jira priority per user request, only our local DB and TickTick.
+      try {
+        await this.taskService.updateTask(task.id, {
+          priority: newPriority,
+          due_date: today, // Move it to today to be planned
+        });
+
+        // Try updating TickTick to sync the new date and priority
+        if (task.ticktick_id) {
+            const updatedTickTick = await this.tickTickService.updateTask(task.ticktick_id, {
+              dueDate: formatTickTickDate(today),
+              priority: newPriority,
+            });
+            if (!updatedTickTick) {
+              await this.taskService.updateTask(task.id, { ticktick_id: null as any });
+            }
+        }
+      } catch (error) {
+         this.logger.error(`Error applying Smart Prioritization to task ${task.id}:`, error);
+         // Don't throw, proceed to the next task
+      }
+    }
   }
 
   /**

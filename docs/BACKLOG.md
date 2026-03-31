@@ -39,7 +39,7 @@ AI Agents must consult this document at the start of new sessions and append ide
 ## 🛠 Technical Debt & Refactoring
 - **Daily/Evening Check Bug:** Утренний чек находит задачу (напр. HOME-18), а вечерний говорит, что всё закрыто.
 - **Ghost Task Bug:** Периодически всплывает задача "Новый тест" в дневном плане.
-- **Jira -> TG Sync Bug & Freeze:** Добавление задачи в Джире не отправляет сообщение в ТГ. Зависает процесс. Также проверить закрытие задачи в Jira при закрытии через ТГ.
+- ~~**Jira -> TG Sync Bug & Freeze:** Добавление задачи в Джире не отправляет сообщение в ТГ. Зависает процесс.~~ *(Решено: Проблема была в блокировке вебхуков Cloudflare Bot Fight Mode)*
 - **TickTick Reschedule Bug:** Перенос задачи в ТГ переносит её в Jira, но НЕ в TickTick.
 - **Text adjustments:** Небольшие правки текстов сообщений бота.
 - **Command Bug:** Команда `/logs` в Telegram не работает.
@@ -51,6 +51,9 @@ AI Agents must consult this document at the start of new sessions and append ide
 3. Database is the Single Source of Truth; TickTick and Jira are reflections. Always execute DB first.
 4. Don't use infinite loops (`while(true)`). Always rely on external CRON via endpoints.
 5. Always use Timezone `Europe/Kiev` (UTC+2). Due dates in TickTick should be `23:59:00`.
+
+### Infrastructure & Security
+1. **Cloudflare WAF (Bot Fight Mode):** Если включен "Bot Fight Mode", он блокирует вебхуки Jira (AWS IPs). Чтобы получать вебхуки, сделай Custom WAF Rule: `Если URI Path содержит /webhook/jira -> Действие: Skip -> Галочка: Bot Fight Mode`.
 
 ### UI / Telegram
 1. Remove inline keyboards after button click to prevent double-clicks.
