@@ -39,12 +39,14 @@ import { JiraAdapter } from './infrastructure/adapters/jira.adapter';
 import { TickTickAdapter } from './infrastructure/adapters/ticktick.adapter';
 import { TelegramAdapter } from './infrastructure/adapters/telegram.adapter';
 import { LlmAdapter } from './infrastructure/adapters/llm.adapter';
+import { SttAdapter } from './infrastructure/adapters/stt.adapter';
 
 // Interfaces
 import { TASK_REPOSITORY } from './core/domain/interfaces/task-repository.interface';
 import { JIRA_ADAPTER, TICKTICK_ADAPTER } from './core/domain/interfaces/sync-adapter.interface';
 import { MESSAGING_ADAPTER } from './core/domain/interfaces/messaging-adapter.interface';
 import { INTELLIGENCE_ADAPTER } from './core/domain/interfaces/intelligence-adapter.interface';
+import { STT_ADAPTER } from './core/domain/interfaces/stt-adapter.interface';
 
 @Module({
   imports: [
@@ -115,6 +117,10 @@ import { INTELLIGENCE_ADAPTER } from './core/domain/interfaces/intelligence-adap
       provide: INTELLIGENCE_ADAPTER,
       useClass: LlmAdapter,
     },
+    {
+      provide: STT_ADAPTER,
+      useClass: SttAdapter,
+    },
 
     // Actual adapter classes (since they might need to use other services or injected directly by Nest)
     TaskRepository,
@@ -122,6 +128,7 @@ import { INTELLIGENCE_ADAPTER } from './core/domain/interfaces/intelligence-adap
     TickTickAdapter,
     TelegramAdapter,
     LlmAdapter,
+    SttAdapter,
 
     // Orchestrators
     TaskSyncOrchestrator,
