@@ -251,7 +251,7 @@ export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
   async updateTask(
     taskId: string,
     task: Partial<TickTickTask>,
-  ): Promise<TickTickTask> {
+  ): Promise<TickTickTask | null> {
     if (!this.axiosInstance) {
       this.logger.warn(`TickTick integration disabled. Cannot update task ${taskId}.`);
       throw new Error('TickTick integration is disabled (missing credentials)');
@@ -266,10 +266,13 @@ export class TickTickAdapter implements ISyncTargetAdapter, OnModuleInit {
 
       const response = await this.axiosInstance.post(`/task/${taskId}`, fullTask);
 
-      this.logger.log(`Updated task: ${taskId}`);
-      this.logger.debug(`Response: ${JSON.stringify(response.data)}`);
+      this.logger.log(`Updated task in TickTick: ${taskId}`);
       return response.data;
     } catch (error) {
+      if (error.response?.status === 404) {
+        this.logger.warn(`TickTick task ${taskId} not found (404). It might have been deleted externally.`);
+        return null as any; // Return null so orchestrator knows it was deleted and can unlink it
+      }
       this.logger.error(
         'Failed to update TickTick task:',
         error.response?.data || error.message,
