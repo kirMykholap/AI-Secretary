@@ -37,6 +37,9 @@ services:
       dockerfile: Dockerfile
     container_name: ai_secretary_app
     restart: always
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - DATABASE_URL=postgresql://${DB_USER:-ai_secretary}:${DB_PASSWORD:-supersecretpassword}@db:5432/${DB_NAME:-ai_secretary_db}?schema=public
       - SYNC_API_KEY=${SYNC_API_KEY}
