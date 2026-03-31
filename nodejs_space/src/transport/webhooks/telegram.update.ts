@@ -24,6 +24,7 @@ import { FileLogger } from '../../infrastructure/logger/file.logger';
 @Update()
 export class TelegramUpdate {
   private readonly logger = new Logger(TelegramUpdate.name);
+  private readonly pendingVoiceTasks = new Map<string, { t: string; d: string; p: number; desc: string }>();
 
   constructor(
     @InjectBot() private bot: Telegraf<Context>,
@@ -446,15 +447,14 @@ export class TelegramUpdate {
         (parsed.description ? `📝 *Описание:* ${parsed.description}\n` : '') +
         `\nДобавить задачу?`;
 
-      const taskData = JSON.stringify({
+      // Store task data in memory, pass only short key in callback (64 byte limit)
+      const taskId = Date.now().toString();
+      this.pendingVoiceTasks.set(taskId, {
         t: parsed.title,
         d: parsed.due_date || new Date().toISOString().split('T')[0],
         p: parsed.priority,
         desc: parsed.description || '',
       });
-
-      // Encode task data into callback, truncate if needed (callback_data max 64 bytes)
-      const taskId = Buffer.from(taskData).toString('base64').substring(0, 50);
 
       await ctx.reply(confirmText, {
         parse_mode: 'Markdown',
@@ -475,8 +475,14 @@ export class TelegramUpdate {
     if (!chatId) return;
 
     try {
-      const encoded = (ctx as any).match[1];
-      const taskData = JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
+      const taskId = (ctx as any).match[1];
+      const taskData = this.pendingVoiceTasks.get(taskId);
+      if (!taskData) {
+        await ctx.answerCbQuery('Сессия истекла, отправьте голосовое снова');
+        await ctx.editMessageReplyMarkup(undefined);
+        return;
+      }
+      this.pendingVoiceTasks.delete(taskId);
 
       await ctx.answerCbQuery('Создаю задачу...');
       await ctx.editMessageReplyMarkup(undefined);
