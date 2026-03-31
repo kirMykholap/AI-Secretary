@@ -1,7 +1,12 @@
 # AI Secretary - Roadmap & Backlog
 
-This document serves as the central repository for ideas, technical debt, and future features. 
-AI Agents must consult this document at the start of new sessions and append ideas here instead of deviating from their current tasks.
+This document serves as the central repository for project vision, features, and technical debt. 
+
+## 🗺 PROJECT ROADMAP (Vision)
+- **Phase 1: Foundation (Done)** — Basic Jira/TickTick/Telegram integration, Hexagonal architecture, stable VPS deployment.
+- **Phase 2: AI Intelligence (Active)** — STT (Whisper), Smart planning, LLM categorization, Automated daily/evening routines.
+- **Phase 3: Ecosystem Expansion (Planned)** — Multi-tenancy, Notion/Google Calendar support, Mobile UI (Telegram Mini App).
+- **Phase 4: Personal Wisdom (Future)** — Integration with Obsidian, Deep productivity analytics, autonomous task execution.
 
 ## 🚀 Future Features
 - **Multi-user Support (Multi-tenancy):** Allow multiple Telegram users to have their own AI Secretary instances. Store `TickTickToken` and `JiraToken` in the DB linked to a specific `TelegramUserID`.
@@ -11,6 +16,7 @@ AI Agents must consult this document at the start of new sessions and append ide
 - **Morning Question Rework:** Привязка времени ответа пользователя (для трекинга сна), изменение формулировки, добавление кнопки "Сегодня выходной".
 - **Critical Server Events Alerts:** Отправка важных системных сообщений (например, падение процессов) напрямую в ТГ-бота.
 - **Global Task Sync:** Периодическая (раз в день / при старте) полная синхронизация задач из Jira с БД (БД - источник правды).
+- **Code Quality Audit:** Разобраться более детально с SonarCloud / DeepSource для автоматической проверки качества кода.
 - **Motivation & Obsidian:** Внедрение системы мотивации и интеграция с Obsidian.
 - **Telegram Mini App / Native Dashboard:** Build a powerful UI inside Telegram to manage tasks (complete, postpone, prioritize, delete) and view server logs. Telegram will act as the primary controller for Jira.
 - **TickTick Deprecation:** Keep TickTick as a read-only visual widget for now. Do NOT add two-way sync to it. In the future, replace it with a custom personal widget.
