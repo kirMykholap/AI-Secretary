@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
-import { IIntelligenceAdapter } from '../../core/domain/interfaces/intelligence-adapter.interface';
+import { IIntelligenceAdapter, ParsedVoiceTask } from '../../core/domain/interfaces/intelligence-adapter.interface';
 
 @Injectable()
 export class LlmAdapter implements IIntelligenceAdapter {
@@ -225,6 +225,55 @@ ${postponedTasks.map((t) => `- ${t.title}: ${t.reason}`).join('\n')}
         `Error generating postponed task suggestion: ${error.message}`,
       );
       return `Эта задача переносится уже ${postponedCount} раз. Может, стоит разбить её на более мелкие шаги или закрыть?`;
+    }
+  }
+
+  /**
+   * Parse transcribed voice message into a structured task
+   */
+  async parseVoiceTask(transcript: string): Promise<ParsedVoiceTask | null> {
+    try {
+      if (process.env.OPENAI_API_KEY === undefined) return null;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const prompt = `Ты AI-секретарь. Пользователь надиктовал голосовое сообщение. Извлеки из него задачу.
+
+Сегодняшняя дата: ${today}
+
+Текст: "${transcript}"
+
+Верни JSON (и ТОЛЬКО JSON, без markdown):
+{
+  "title": "краткое название задачи (до 60 символов)",
+  "due_date": "YYYY-MM-DD или null если дата не указана (тогда будет сегодня)",
+  "priority": число от 0 до 5 (0=нет, 1=низкий, 3=средний, 5=высокий). Определи по контексту: срочно/важно = 5, обычная задача = 1, если не ясно = 0,
+  "description": "дополнительные детали из сообщения или null"
+}
+
+Если в тексте НЕТ задачи (просто болтовня, вопрос, приветствие) — верни null.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: this.getModel(),
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+      });
+
+      const content = response.choices?.[0]?.message?.content?.trim();
+      if (!content || content === 'null') return null;
+
+      const parsed = JSON.parse(content);
+      if (!parsed || !parsed.title) return null;
+
+      return {
+        title: parsed.title,
+        due_date: parsed.due_date || null,
+        priority: typeof parsed.priority === 'number' ? parsed.priority : 0,
+        description: parsed.description || null,
+      };
+    } catch (error: any) {
+      this.logger.error(`Error parsing voice task: ${error.message}`);
+      return null;
     }
   }
 }

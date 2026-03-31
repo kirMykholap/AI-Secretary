@@ -59,6 +59,7 @@ jobs:
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           echo "OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}" >> .env
           echo "LLM_MODEL=${{ secrets.LLM_MODEL }}" >> .env
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
           echo "DAILY_CAPACITY_MINUTES=${{ secrets.DAILY_CAPACITY_MINUTES }}" >> .env
           echo "MORNING_CRON=${{ secrets.MORNING_CRON }}" >> .env
           echo "EVENING_CRON=${{ secrets.EVENING_CRON }}" >> .env

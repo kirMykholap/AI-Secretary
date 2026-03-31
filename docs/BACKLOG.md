@@ -20,7 +20,14 @@ AI Agents must consult this document at the start of new sessions and append ide
 ### LLM Integration
 - **Smart categorization:** Auto-detect task category from description
 - **Deadline suggestion:** LLM suggests due dates based on task content
-- **Voice input:** Telegram voice messages → structured tasks
+- **Voice input (Telegram → Task):**
+  - Telegram voice/audio message → Speech-to-Text (Whisper API) → текст
+  - Текст → LLM парсинг: извлечь название задачи, дату, приоритет, категорию
+  - Если дата не указана — спросить или поставить "сегодня"
+  - Если приоритет не указан — LLM предлагает на основе контекста
+  - Создать задачу через существующий flow (DB → Jira → TickTick)
+  - Отправить подтверждение в Telegram с кнопками "✅ Ок" / "✏️ Изменить"
+  - **STT провайдер:** Groq Whisper API (free tier: 2000 req/day, 20 req/min). OpenAI-совместимый SDK, base URL: `https://api.groq.com/openai/v1`. Ключ в `GROQ_API_KEY` (GitHub Secrets → .env)
 - **Priority prediction:** Auto-assign priority based on keywords
 
 ### Additional Sources

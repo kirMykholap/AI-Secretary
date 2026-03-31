@@ -3,13 +3,19 @@ import {
   Start,
   Command,
   Action,
+  On,
   Ctx,
   InjectBot,
 } from 'nestjs-telegraf';
 import { Telegraf, Context, Markup } from 'telegraf';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
+import axios from 'axios';
 import { TASK_REPOSITORY } from '../../core/domain/interfaces/task-repository.interface';
 import type { ITaskRepository } from '../../core/domain/interfaces/task-repository.interface';
+import { INTELLIGENCE_ADAPTER } from '../../core/domain/interfaces/intelligence-adapter.interface';
+import type { IIntelligenceAdapter } from '../../core/domain/interfaces/intelligence-adapter.interface';
+import { STT_ADAPTER } from '../../core/domain/interfaces/stt-adapter.interface';
+import type { ISttAdapter } from '../../core/domain/interfaces/stt-adapter.interface';
 import { PlanningOrchestrator } from '../../core/application/orchestrators/planning.orchestrator';
 import { TaskSyncOrchestrator } from '../../core/application/orchestrators/task-sync.orchestrator';
 import { TelegramAdapter } from '../../infrastructure/adapters/telegram.adapter';
@@ -27,6 +33,8 @@ export class TelegramUpdate {
     private readonly telegramService: TelegramAdapter,
     @Inject(forwardRef(() => TaskSyncOrchestrator))
     private readonly syncOrchestrator: TaskSyncOrchestrator,
+    @Inject(STT_ADAPTER) private readonly sttAdapter: ISttAdapter,
+    @Inject(INTELLIGENCE_ADAPTER) private readonly llmAdapter: IIntelligenceAdapter,
   ) { }
 
   @Start()
@@ -385,5 +393,119 @@ export class TelegramUpdate {
     await this.schedulerService.postponeAllIncompleteTasks(chatId);
   }
 
-  // Legacy notifications now use task_done_, task_del_ and task_postpone1_ from the Dashboard.
+  // --- VOICE MESSAGES ---
+
+  @On('voice')
+  async onVoice(@Ctx() ctx: Context) {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    try {
+      const voice = (ctx.message as any)?.voice;
+      if (!voice) return;
+
+      await ctx.reply('🎙 Обрабатываю голосовое сообщение...');
+
+      // Download voice file from Telegram
+      const fileLink = await ctx.telegram.getFileLink(voice.file_id);
+      const response = await axios.get(fileLink.href, { responseType: 'arraybuffer' });
+      const fileBuffer = Buffer.from(response.data);
+
+      // Transcribe
+      const transcript = await this.sttAdapter.transcribe(fileBuffer, 'voice.ogg');
+      if (!transcript) {
+        await ctx.reply('❌ Не удалось распознать голосовое сообщение.');
+        return;
+      }
+
+      this.logger.log(`Voice transcribed: "${transcript}"`);
+
+      // Parse task from transcript
+      const parsed = await this.llmAdapter.parseVoiceTask(transcript);
+      if (!parsed) {
+        await ctx.reply(`📝 Распознано: _"${transcript}"_\n\nЗадача не обнаружена.`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      // Set due_date to today if not specified
+      const dueDate = parsed.due_date
+        ? new Date(parsed.due_date + 'T23:59:00+0200')
+        : new Date(new Date().toLocaleDateString('en-CA') + 'T23:59:00+0200');
+
+      const priorityNames: { [key: number]: string } = {
+        5: '🔴 Высокий', 3: '🟠 Средний', 1: '🟡 Низкий', 0: '⚪ Без приоритета',
+      };
+      const priorityLabel = priorityNames[parsed.priority] || priorityNames[0];
+
+      // Show confirmation
+      const confirmText =
+        `🎙 Распознано: _"${transcript}"_\n\n` +
+        `📋 *Задача:* ${parsed.title}\n` +
+        `🗓 *Дата:* ${dueDate.toLocaleDateString('ru-RU')}\n` +
+        `🔥 *Приоритет:* ${priorityLabel}\n` +
+        (parsed.description ? `📝 *Описание:* ${parsed.description}\n` : '') +
+        `\nДобавить задачу?`;
+
+      const taskData = JSON.stringify({
+        t: parsed.title,
+        d: parsed.due_date || new Date().toISOString().split('T')[0],
+        p: parsed.priority,
+        desc: parsed.description || '',
+      });
+
+      // Encode task data into callback, truncate if needed (callback_data max 64 bytes)
+      const taskId = Buffer.from(taskData).toString('base64').substring(0, 50);
+
+      await ctx.reply(confirmText, {
+        parse_mode: 'Markdown',
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Добавить', `voice_confirm_${taskId}`)],
+          [Markup.button.callback('❌ Отменить', `voice_cancel`)],
+        ]).reply_markup,
+      });
+    } catch (error: any) {
+      this.logger.error(`Voice processing failed: ${error.message}`);
+      await ctx.reply('❌ Ошибка обработки голосового сообщения.');
+    }
+  }
+
+  @Action(/^voice_confirm_(.+)$/)
+  async onVoiceConfirm(@Ctx() ctx: Context) {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    try {
+      const encoded = (ctx as any).match[1];
+      const taskData = JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
+
+      await ctx.answerCbQuery('Создаю задачу...');
+      await ctx.editMessageReplyMarkup(undefined);
+
+      const dueDate = new Date(taskData.d + 'T23:59:00+0200');
+
+      const task = await this.taskService.createTask({
+        title: taskData.t,
+        source: 'telegram',
+        source_id: `voice_${Date.now()}`,
+        status: 'active',
+        priority: taskData.p,
+        due_date: dueDate,
+        description: taskData.desc || undefined,
+        tags: ['voice'],
+        postponed_count: 0,
+      });
+
+      await ctx.reply(`✅ Задача создана: *${task.title}*`, { parse_mode: 'Markdown' });
+    } catch (error: any) {
+      this.logger.error(`Voice confirm failed: ${error.message}`);
+      await ctx.reply('❌ Ошибка при создании задачи.');
+    }
+  }
+
+  @Action('voice_cancel')
+  async onVoiceCancel(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery('Отменено');
+    await ctx.editMessageReplyMarkup(undefined);
+    await ctx.reply('🚫 Задача отменена.');
+  }
 }
