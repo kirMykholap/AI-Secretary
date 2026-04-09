@@ -1,0 +1,66 @@
+generator client {
+    provider = "prisma-client-js"
+    output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model tasks {
+  id           String   @id @default(uuid())
+  source       String   @db.VarChar(50)
+  source_id    String?  @db.VarChar(255)
+  title        String   @db.VarChar(500)
+  description  String?  @db.Text
+  priority     Int      @default(1)
+  due_date     DateTime?
+  tags         String[]
+  estimated_minutes Int?
+  actual_minutes    Int?
+  postponed_count   Int      @default(0)
+  parent_id         String?
+  status       String   @default("active") @db.VarChar(50)
+  jira_id      String?  @unique @db.VarChar(255)
+  jira_key     String?  @db.VarChar(255)
+  ticktick_id  String?  @unique @db.VarChar(255)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  completed_at DateTime?
+
+  @@index([source])
+  @@index([status])
+  @@index([jira_id])
+  @@index([ticktick_id])
+}
+
+model task_mappings {
+  id          Int      @id @default(autoincrement())
+  jira_id     String   @unique @db.VarChar(255)
+  jira_key    String   @db.VarChar(255)
+  ticktick_id String   @unique @db.VarChar(255)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model IntegrationToken {
+  id            String    @id @default(uuid())
+  provider      String    @unique @db.VarChar(50)
+  access_token  String    @db.Text
+  refresh_token String?   @db.Text
+  expires_at    DateTime?
+  updated_at    DateTime  @updatedAt
+
+  @@map("integration_tokens")
+}
+
+model DailyCheckin {
+  id           String   @id @default(uuid())
+  user_id      String   @db.VarChar(255)
+  capacity_min Int
+  is_day_off   Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  @@map("daily_checkins")
+}

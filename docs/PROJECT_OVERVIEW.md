@@ -16,6 +16,25 @@
 *   **Статус:** Внедрено. Ошибки рассинхрона больше не крашат систему.
 *   **Детали:** [Сессия 2.1.6](docs/sessions/2.1.6/walkthrough.md)
 
+### Infrastructure & Tooling
+*   **Version Control & Repo**: Git + GitHub.
+*   **Deployment**: VPS Environment Setup based on Docker and `docker-compose.yml`. CI/CD using GitHub Actions (`quality.yml`, `security.yml`).
+*   **Secret Management**: Environment variables (.env).
+*   **Security Scanning**: Checkov, Snyk, and detect-secrets integration in CI/CD pipeline.
+*   **Automated Backups**: Nightly encrypted ZIP backups via Cron, uploaded to Telegram.
+
+### AI Agentic Workflows
+Проект использует строгую систему сменных ролей (шляп) для AI Агентов, описанную в папке `.agent/`. При выполнении задач используются следующие роли:
+*   **BA (System Analyst)** — сбор требований и создание планов. Находится в `.agent/roles/ba.md`. Инвокация: `/role-ba`
+*   **Architect** — дизайн слоев и интерфейсов. Инвокация: `/role-architect`
+*   **Developer** — написание кода. Инвокация: `/role-developer`
+*   **QA / Tester** — написание тестов и поиск багов. Инвокация: `/role-tester`
+*   **DevSecOps** — настройка инфраструктуры и безопасности. Инвокация: `/role-devops`
+*   **Manager** — файловая оркестрация и процессы. Инвокация: `/role-manager`
+Для комплексных задач используется `/feature-pipeline` (последовательная оркестрация ролей).
+
+## Context Management Philosophy
+
 ## 🛡 Безопасность и CI/CD (Snyk) (v2.1.5)
 *   **Суть:** Разделение на два пайплайна. Сначала проверка безопасности Snyk, и только если всё чисто — автоматический деплой на VPS.
 *   **Статус:** Настроено в GitHub Actions (`security.yml`, `deploy.yml`).

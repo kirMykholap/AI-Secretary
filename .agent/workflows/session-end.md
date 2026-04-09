@@ -28,7 +28,8 @@ When the USER requests to "finish the session" or "save progress", you must exec
 
 6.  **Run Security Scan**
     Execute a global search (grep) to ensure no hardcoded secrets or sensitive IP addresses remain in the repository:
-    `grep -rE "185\.[0-9]{1,3}|[a-zA-Z0-9.-]*@gmail\.com|kir-[a-zA-Z0-9-]*\.atlassian\.net" . --exclude-dir node_modules --exclude-dir .git`
+    `grep -rE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9-]+\.atlassian\.net|(password|secret|token|api_?key|auth|pwd)[\s:=]+['\"][a-zA-Z0-9\/=+\-_]{16,}['\"]" . --exclude-dir node_modules --exclude-dir .git --exclude-dir dist
+`
     If ANY matches are found, you MUST replace them with placeholders (e.g., `<YOUR_IP>`, `<YOUR_EMAIL>`) before proceeding!
 
 7.  **Commit and Push All Changes**
